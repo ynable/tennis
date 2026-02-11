@@ -1,0 +1,479 @@
+/* ============================================
+   テニス ダブルス 組み合わせメーカー - スタイル
+   ============================================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Helvetica Neue', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 20px;
+  color: #333;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  padding: 32px;
+}
+
+h1 {
+  text-align: center;
+  font-size: 1.8rem;
+  color: #4a4a8a;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 3px solid #667eea;
+}
+
+h2 {
+  font-size: 1.3rem;
+  color: #555;
+  margin-bottom: 16px;
+}
+
+/* ステップ表示制御 */
+.step {
+  display: none;
+}
+.step.active {
+  display: block;
+}
+
+/* コート・人数入力 */
+.court-player-select {
+  margin-bottom: 20px;
+}
+
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.input-row label {
+  font-weight: bold;
+  font-size: 1rem;
+  min-width: 120px;
+}
+
+.input-row input[type="number"] {
+  width: 80px;
+  padding: 10px 12px;
+  font-size: 1.1rem;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: bold;
+  transition: border-color 0.3s;
+}
+
+.input-row input[type="number"]:focus {
+  border-color: #667eea;
+  outline: none;
+}
+
+.input-hint {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.info-message {
+  background: #e8f4fd;
+  color: #1565c0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-top: 8px;
+  display: none;
+}
+
+.info-message.visible {
+  display: block;
+}
+
+.error-message {
+  background: #fdecea;
+  color: #c62828;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-top: 8px;
+  display: none;
+}
+
+.error-message.visible {
+  display: block;
+}
+
+/* プレイヤー入力 */
+.player-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.player-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.player-input-group .player-number {
+  background: #667eea;
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.player-input-group input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: border-color 0.3s;
+}
+
+.player-input-group input:focus {
+  border-color: #667eea;
+  outline: none;
+}
+
+/* 初戦選択 */
+.description {
+  color: #777;
+  margin-bottom: 12px;
+}
+
+.first-match-select {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.first-match-select label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: 2px solid #eee;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 0.95rem;
+}
+
+.first-match-select label:hover {
+  border-color: #667eea;
+  background: #f8f8ff;
+}
+
+.first-match-select input[type="radio"] {
+  accent-color: #667eea;
+  width: 18px;
+  height: 18px;
+}
+
+/* ボタン */
+.btn {
+  padding: 12px 28px;
+  font-size: 1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin: 4px;
+}
+
+.btn.primary {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+}
+
+.btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn.secondary {
+  background: #eee;
+  color: #555;
+}
+
+.btn.secondary:hover {
+  background: #ddd;
+}
+
+.btn.accent {
+  background: linear-gradient(135deg, #f093fb, #f5576c);
+  color: #fff;
+  font-size: 1.1rem;
+  padding: 14px 36px;
+  display: block;
+  margin: 24px auto 0;
+}
+
+.btn.accent:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+}
+
+.btn.score-btn {
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  background: #28a745;
+  color: #fff;
+  border-radius: 6px;
+}
+
+.btn.score-btn:hover {
+  background: #218838;
+}
+
+.btn.score-btn.saved {
+  background: #6c757d;
+}
+
+/* 試合一覧 */
+.match-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.match-round-header {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 1.05rem;
+  margin-top: 8px;
+}
+
+.match-card {
+  background: #f9f9ff;
+  border: 2px solid #e8e8f0;
+  border-radius: 10px;
+  padding: 14px 18px;
+  transition: all 0.3s;
+}
+
+.match-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 2px 10px rgba(102, 126, 234, 0.15);
+}
+
+.match-card .match-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.match-card .match-number {
+  font-weight: bold;
+  color: #667eea;
+  font-size: 0.9rem;
+}
+
+.match-card .court-label {
+  background: #667eea;
+  color: #fff;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+}
+
+.match-card .match-teams {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 1rem;
+  flex-wrap: wrap;
+}
+
+.match-card .team {
+  background: #fff;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-weight: bold;
+  text-align: center;
+}
+
+.match-card .vs {
+  color: #f5576c;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.match-card .score-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.match-card .score-area input {
+  width: 60px;
+  padding: 6px 8px;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: bold;
+}
+
+.match-card .score-area input:focus {
+  border-color: #667eea;
+  outline: none;
+}
+
+.match-card .score-area .score-dash {
+  font-weight: bold;
+  color: #999;
+}
+
+.match-card.saved {
+  border-color: #28a745;
+  background: #f0fff4;
+}
+
+.rest-card {
+  background: #fff8e1;
+  border: 2px solid #ffca28;
+  border-radius: 10px;
+  padding: 12px 18px;
+  text-align: center;
+  color: #f57f17;
+  font-weight: bold;
+}
+
+/* 結果テーブル */
+.result-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+.result-table th,
+.result-table td {
+  padding: 12px 16px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+}
+
+.result-table th {
+  background: #667eea;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.result-table th:first-child {
+  border-radius: 8px 0 0 0;
+}
+
+.result-table th:last-child {
+  border-radius: 0 8px 0 0;
+}
+
+.result-table tr:nth-child(even) {
+  background: #f8f8ff;
+}
+
+.result-table tr:hover {
+  background: #eef0ff;
+}
+
+.result-table .rank-1 {
+  background: #fff9c4 !important;
+  font-weight: bold;
+}
+
+.result-table .rank-2 {
+  background: #e0e0e0 !important;
+}
+
+.result-table .rank-3 {
+  background: #ffe0b2 !important;
+}
+
+.rank-badge {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  border-radius: 50%;
+  font-weight: bold;
+  font-size: 0.85rem;
+  color: #fff;
+}
+
+.rank-badge.gold {
+  background: linear-gradient(135deg, #f9a825, #ff8f00);
+}
+
+.rank-badge.silver {
+  background: linear-gradient(135deg, #90a4ae, #607d8b);
+}
+
+.rank-badge.bronze {
+  background: linear-gradient(135deg, #ff7043, #e64a19);
+}
+
+.rank-badge.other {
+  background: #bbb;
+}
+
+/* レスポンシブ */
+@media (max-width: 600px) {
+  .container {
+    padding: 16px;
+  }
+
+  h1 {
+    font-size: 1.3rem;
+  }
+
+  .player-inputs {
+    grid-template-columns: 1fr;
+  }
+
+  .match-card .match-teams {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .match-card .score-area {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .match-card .score-area input {
+    width: 80px;
+  }
+}

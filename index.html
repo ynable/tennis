@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>テニス ダブルス 組み合わせメーカー</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>🎾 テニス ダブルス 組み合わせメーカー</h1>
+
+    <!-- Step 1: コート数 & 人数選択 -->
+    <section id="step1" class="step active">
+      <h2>Step 1: コート数と参加人数を入力</h2>
+      <div class="court-player-select">
+        <div class="input-row">
+          <label for="courtCount">使用コート数:</label>
+          <input type="number" id="courtCount" min="1" max="20" value="2">
+          <span class="input-hint">コート</span>
+        </div>
+        <div class="input-row">
+          <label for="playerCountInput">参加人数:</label>
+          <input type="number" id="playerCountInput" min="4" max="80" value="8">
+          <span class="input-hint">人</span>
+        </div>
+        <p id="step1Info" class="info-message"></p>
+        <p id="step1Error" class="error-message"></p>
+      </div>
+      <button class="btn primary" onclick="goToStep2()">次へ</button>
+    </section>
+
+    <!-- Step 2: プレイヤー名入力 -->
+    <section id="step2" class="step">
+      <h2>Step 2: プレイヤー名を入力</h2>
+      <div id="playerInputs" class="player-inputs"></div>
+      <button class="btn secondary" onclick="goToStep1()">戻る</button>
+      <button class="btn primary" onclick="goToStep3()">次へ</button>
+    </section>
+
+    <!-- Step 3: 初戦の組み合わせ選択 -->
+    <section id="step3" class="step">
+      <h2>Step 3: 初戦の組み合わせ</h2>
+      <p class="description">番号順（1,2 vs 3,4 ...）を初戦にしますか？</p>
+      <div class="first-match-select">
+        <label>
+          <input type="radio" name="firstMatch" value="sequential" checked>
+          はい（番号順で組む）
+        </label>
+        <label>
+          <input type="radio" name="firstMatch" value="random">
+          いいえ（ランダムで組む）
+        </label>
+      </div>
+      <button class="btn secondary" onclick="goToStep2FromStep3()">戻る</button>
+      <button class="btn primary" onclick="generateMatches()">組み合わせを生成！</button>
+    </section>
+
+    <!-- Step 4: 試合一覧 & ポイント入力 -->
+    <section id="step4" class="step">
+      <h2>🏆 試合一覧</h2>
+      <div id="matchList" class="match-list"></div>
+      <div id="aggregateArea" style="display:none;">
+        <button class="btn accent" onclick="showResults()">集計する</button>
+      </div>
+    </section>
+
+    <!-- Step 5: 結果表示 -->
+    <section id="step5" class="step">
+      <h2>📊 最終結果</h2>
+      <div id="resultTable"></div>
+      <button class="btn secondary" onclick="backToMatches()">試合一覧に戻る</button>
+      <button class="btn primary" onclick="resetApp()">最初からやり直す</button>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    // Step1のリアルタイム情報更新
+    document.getElementById('courtCount').addEventListener('input', updateStep1Info);
+    document.getElementById('playerCountInput').addEventListener('input', updateStep1Info);
+
+    function updateStep1Info() {
+      const courts = parseInt(document.getElementById('courtCount').value) || 0;
+      const ppl = parseInt(document.getElementById('playerCountInput').value) || 0;
+      const infoEl = document.getElementById('step1Info');
+      const errorEl = document.getElementById('step1Error');
+      infoEl.classList.remove('visible');
+      infoEl.textContent = '';
+      errorEl.classList.remove('visible');
+      errorEl.textContent = '';
+
+      if (courts < 1 || ppl < 4) return;
+      const maxOnCourt = courts * 4;
+      if (ppl > maxOnCourt) {
+        infoEl.textContent = `ℹ️ ${courts}コート(最大${maxOnCourt}人)に対して${ppl}人です。毎ラウンド${ppl - maxOnCourt}人が交代で休みになります。`;
+        infoEl.classList.add('visible');
+      } else if (ppl < maxOnCourt) {
+        const active = Math.floor(ppl / 4);
+        const rest = ppl - active * 4;
+        if (active < 1) return;
+        let msg = `ℹ️ ${ppl}人なので、実際に使用するコートは${active}コートです。`;
+        if (rest > 0) msg += `毎ラウンド${rest}人が交代で休みになります。`;
+        infoEl.textContent = msg;
+        infoEl.classList.add('visible');
+      }
+    }
+  </script>
+</body>
+</html>
