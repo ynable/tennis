@@ -197,21 +197,25 @@ function generateMatches() {
 
 // --- プレイヤー選出ロジック ---
 function selectPlayersForRound(totalPlayers, needed, lastPlayedRound, currentRound, playCountArr) {
-  // スコアリング: 出場回数が少ない人優先、直前ラウンドに出た人はペナルティ
   const indices = Array.from({ length: totalPlayers }, (_, i) => i);
 
+  // まずシャッフルしてランダム性を確保（同スコア時のタイブレーク）
+  shuffleArray(indices);
+
+  // 各プレイヤーにスコアを付けてソート
+  // スコアが低いほど優先的に選出
   indices.sort((a, b) => {
-    // 出場回数の少ない方を優先
+    // 1. 出場回数が少ない人を優先
     const countDiff = playCountArr[a] - playCountArr[b];
     if (countDiff !== 0) return countDiff;
 
-    // 連続出場をなるべく避ける (直前ラウンドに出場した人は後回し)
-    const aConsecutive = (lastPlayedRound[a] === currentRound - 1) ? 1 : 0;
-    const bConsecutive = (lastPlayedRound[b] === currentRound - 1) ? 1 : 0;
-    if (aConsecutive !== bConsecutive) return aConsecutive - bConsecutive;
+    // 2. 最後にプレイしてからの間隔が長い人を優先（休みが続いてる人）
+    const aGap = currentRound - lastPlayedRound[a];
+    const bGap = currentRound - lastPlayedRound[b];
+    if (aGap !== bGap) return bGap - aGap; // 間隔が大きい方を優先
 
-    // ランダム要素
-    return Math.random() - 0.5;
+    // 3. 同条件ならシャッフル済みの順序を維持（ランダム）
+    return 0;
   });
 
   return indices.slice(0, needed);
