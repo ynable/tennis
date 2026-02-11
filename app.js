@@ -337,15 +337,11 @@ function renderMatchList() {
       <div class="score-area">
         <input type="number" id="score1-${idx}" placeholder="得点" min="0"
           value="${savedScore ? savedScore.score1 : ''}"
-          onchange="autoSaveScore(${idx})">
+          oninput="onScoreInput(${idx})">
         <span class="score-dash">−</span>
         <input type="number" id="score2-${idx}" placeholder="得点" min="0"
           value="${savedScore ? savedScore.score2 : ''}"
-          onchange="autoSaveScore(${idx})">
-        <button class="btn score-btn ${savedScore ? 'saved' : ''}"
-          id="saveBtn-${idx}" onclick="saveScore(${idx})">
-          ${savedScore ? '保存済' : '保存'}
-        </button>
+          oninput="onScoreInput(${idx})">
       </div>
     `;
 
@@ -357,36 +353,24 @@ function renderMatchList() {
   });
 
   // 集計ボタン表示エリア
-  document.getElementById('aggregateArea').style.display = 'block';
+  document.getElementById('aggregateArea').classList.add('visible');
 }
 
-// --- スコア保存 ---
-function autoSaveScore(idx) {
-  // 自動保存（入力時）
+// --- スコア入力時の自動処理 ---
+function onScoreInput(idx) {
   const s1 = document.getElementById(`score1-${idx}`).value;
   const s2 = document.getElementById(`score2-${idx}`).value;
-  if (s1 !== '' && s2 !== '') {
-    saveScore(idx);
-  }
-}
-
-function saveScore(idx) {
-  const s1 = parseInt(document.getElementById(`score1-${idx}`).value);
-  const s2 = parseInt(document.getElementById(`score2-${idx}`).value);
-
-  if (isNaN(s1) || isNaN(s2)) {
-    alert('両チームの得点を入力してください');
-    return;
-  }
-
-  scores[idx] = { score1: s1, score2: s2 };
-
   const card = document.getElementById(`match-${idx}`);
-  card.classList.add('saved');
 
-  const btn = document.getElementById(`saveBtn-${idx}`);
-  btn.textContent = '保存済';
-  btn.classList.add('saved');
+  if (s1 !== '' && s2 !== '') {
+    // 両方入力済み → スコア保存 & カードの色を変更
+    scores[idx] = { score1: parseInt(s1), score2: parseInt(s2) };
+    card.classList.add('saved');
+  } else {
+    // 片方でも空欄 → スコア削除 & カードの色を戻す
+    delete scores[idx];
+    card.classList.remove('saved');
+  }
 }
 
 // --- 集計 & 結果表示 ---
@@ -446,6 +430,7 @@ function showResults() {
   });
 
   renderResults(stats);
+  document.getElementById('aggregateArea').classList.remove('visible');
   showStep('step5');
 }
 
@@ -500,6 +485,7 @@ function renderResults(stats) {
 
 // --- ナビゲーション ---
 function backToMatches() {
+  document.getElementById('aggregateArea').classList.add('visible');
   showStep('step4');
 }
 
@@ -508,5 +494,6 @@ function resetApp() {
   players = [];
   matches = [];
   scores = {};
+  document.getElementById('aggregateArea').classList.remove('visible');
   showStep('step1');
 }

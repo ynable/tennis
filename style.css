@@ -229,8 +229,6 @@ h2 {
   color: #fff;
   font-size: 1.1rem;
   padding: 14px 36px;
-  display: block;
-  margin: 24px auto 0;
 }
 
 .btn.accent:hover {
@@ -238,20 +236,29 @@ h2 {
   box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
 }
 
-.btn.score-btn {
-  padding: 6px 14px;
-  font-size: 0.85rem;
-  background: #28a745;
-  color: #fff;
-  border-radius: 6px;
+/* 固定下部バー */
+.fixed-bottom-bar {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 14px 20px;
+  text-align: center;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+  z-index: 100;
 }
 
-.btn.score-btn:hover {
-  background: #218838;
+.fixed-bottom-bar.visible {
+  display: block;
 }
 
-.btn.score-btn.saved {
-  background: #6c757d;
+/* step4表示時に下部の余白を確保 */
+#step4 .match-list {
+  padding-bottom: 80px;
 }
 
 /* 試合一覧 */
