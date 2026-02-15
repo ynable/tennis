@@ -197,28 +197,111 @@ function generateMatches() {
 
 // --- プレイヤー選出ロジック ---
 function selectPlayersForRound(totalPlayers, needed, lastPlayedRound, currentRound, playCountArr) {
-  const indices = Array.from({ length: totalPlayers }, (_, i) => i);
+  const restCount = totalPlayers - needed; // 休む人数
 
-  // まずシャッフルしてランダム性を確保（同スコア時のタイブレーク）
-  shuffleArray(indices);
+  if (restCount <= 0) {
+    // 全員出場する場合
+    return Array.from({ length: totalPlayers }, (_, i) => i);
+  }
 
-  // 各プレイヤーにスコアを付けてソート
-  // スコアが低いほど優先的に選出
-  indices.sort((a, b) => {
-    // 1. 出場回数が少ない人を優先
-    const countDiff = playCountArr[a] - playCountArr[b];
-    if (countDiff !== 0) return countDiff;
+  // 全プレイヤーのインデックス
+  const allPlayers = Array.from({ length: totalPlayers }, (_, i) => i);
 
-    // 2. 最後にプレイしてからの間隔が長い人を優先（休みが続いてる人）
-    const aGap = currentRound - lastPlayedRound[a];
-    const bGap = currentRound - lastPlayedRound[b];
-    if (aGap !== bGap) return bGap - aGap; // 間隔が大きい方を優先
-
-    // 3. 同条件ならシャッフル済みの順序を維持（ランダム）
-    return 0;
+  // --- 連続休み回数を計算 ---
+  // consecutiveRest[i]: プレイヤーiが現在何ラウンド連続で休んでいるか（0なら前ラウンド出場）
+  const consecutiveRest = allPlayers.map(i => {
+    const gap = currentRound - 1 - lastPlayedRound[i];
+    return gap > 0 ? gap : 0;
   });
 
-  return indices.slice(0, needed);
+  // --- 前ラウンドの出場者を特定 ---
+  const prevPlayedSet = new Set();
+  if (currentRound > 0) {
+    for (let i = 0; i < totalPlayers; i++) {
+      if (lastPlayedRound[i] === currentRound - 1) prevPlayedSet.add(i);
+    }
+  }
+
+  // --- メンバーシャッフルの方針 ---
+  // 「前回出た人」と「前回休んだ人」を混ぜて選ぶ
+  // ただし連続休みが長い人は必ず優先する
+  const prevPlayed = allPlayers.filter(i => prevPlayedSet.has(i));
+  const prevRested = allPlayers.filter(i => !prevPlayedSet.has(i));
+
+  shuffleArray(prevPlayed);
+  shuffleArray(prevRested);
+
+  // 連続休みが長い順 → 出場回数が少ない順にソート
+  const sortByPriority = (a, b) => {
+    const restDiff = consecutiveRest[b] - consecutiveRest[a];
+    if (restDiff !== 0) return restDiff;
+    const countDiff = playCountArr[a] - playCountArr[b];
+    if (countDiff !== 0) return countDiff;
+    return 0;
+  };
+  prevPlayed.sort(sortByPriority);
+  prevRested.sort(sortByPriority);
+
+  const selected = [];
+
+  // (1) まず連続休みが2回以上の人は優先的に入れる（ただし needed を超えない）
+  const urgent = prevRested.filter(p => consecutiveRest[p] >= 2);
+  const urgentToAdd = urgent.slice(0, Math.min(urgent.length, needed));
+  urgentToAdd.forEach(p => selected.push(p));
+
+  // (2) 残り枠を「前回休んだ人」と「前回出た人」から混ぜて選ぶ
+  const remaining = needed - selected.length;
+  if (remaining > 0) {
+    const selectedSet = new Set(selected);
+    const nonUrgentRested = prevRested.filter(p => !selectedSet.has(p));
+
+    // 休み人数 >= 出場枠の場合（ちょうど半分など）はシャッフルが特に重要
+    // 前回休んだ人と前回出た人を混ぜる比率を決める
+    // 最低1人は前回出場者から残す（グループ固定化防止）
+    const restedAvailable = nonUrgentRested.length;
+    const playedAvailable = prevPlayed.length;
+
+    let fromRestedCount, fromPlayedCount;
+
+    // 次ラウンドの連続休みリスクを計算
+    // 今回選ばれなかった休み組の中に、連続1回以上休みの人が何人いるか
+    // → 前回出場者を混ぜすぎると休み人数が蓄積して3回連続休みが生まれる
+    const potentialRestCount = restedAvailable; // 選ばれなければ連続休み2回以上になる人数
+
+    // urgentがほぼ枠を埋めた → 残り枠は休んでた人を優先
+    if (urgent.length >= needed - 1) {
+      fromRestedCount = Math.min(restedAvailable, remaining);
+      fromPlayedCount = remaining - fromRestedCount;
+    } else if (restedAvailable >= remaining && playedAvailable > 0) {
+      // 前回休んだ人だけで足りるが、一部を前回出場者と入れ替える
+      // ただしrestCount > neededの場合、混合すると休み組が溢れるリスクがある
+      let maxFromPlayed;
+      if (restCount > needed && potentialRestCount > remaining) {
+        // 休む人が多い → 混合を最小限にして連続休みの蓄積を防ぐ
+        maxFromPlayed = Math.min(1, playedAvailable);
+      } else {
+        const mixRatio = 0.5;
+        maxFromPlayed = Math.min(Math.ceil(remaining * mixRatio), playedAvailable);
+      }
+      const minFromPlayed = Math.min(1, playedAvailable);
+      const range = Math.max(maxFromPlayed - minFromPlayed, 0);
+      fromPlayedCount = minFromPlayed + Math.floor(Math.random() * (range + 1));
+      fromRestedCount = remaining - fromPlayedCount;
+    } else if (restedAvailable >= remaining) {
+      // 前回出場者がいない（初回付近）
+      fromRestedCount = remaining;
+      fromPlayedCount = 0;
+    } else {
+      // 前回休んだ人だけでは足りない → 全員入れて、残りを前回出場者から
+      fromRestedCount = restedAvailable;
+      fromPlayedCount = remaining - fromRestedCount;
+    }
+
+    nonUrgentRested.slice(0, fromRestedCount).forEach(p => selected.push(p));
+    prevPlayed.slice(0, fromPlayedCount).forEach(p => selected.push(p));
+  }
+
+  return selected;
 }
 
 // --- チーム割り当てロジック（同ペア最小化） ---
