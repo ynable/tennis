@@ -65,24 +65,19 @@
       <h2>🏆 試合一覧</h2>
       <div id="matchList" class="match-list"></div>
       <div id="aggregateArea" class="fixed-bottom-bar">
-        <button class="btn accent" onclick="goToStep5()">📊 得点入力へ</button>
+        <button class="btn accent" onclick="goToStep5()">📊 集計結果を見る</button>
       </div>
     </section>
 
-    <!-- Step 5: 得点一括入力 & 結果表示 -->
+    <!-- Step 5: 集計結果表示 -->
     <section id="step5" class="step">
-      <h2>📊 得点入力</h2>
-      <div id="scoreInputList" class="score-input-list"></div>
+      <h2>📊 集計結果</h2>
+      <div id="resultArea" style="margin-top:12px;">
+        <div id="resultTable"></div>
+      </div>
       <div style="text-align:center; margin-top:20px;">
         <button class="btn secondary" onclick="backToMatches()">試合一覧に戻る</button>
-        <button class="btn accent" onclick="showResults()">📊 集計する</button>
-      </div>
-      <div id="resultArea" style="display:none; margin-top:24px;">
-        <h2>📊 最終結果</h2>
-        <div id="resultTable"></div>
-        <div style="text-align:center; margin-top:16px;">
-          <button class="btn primary" onclick="resetApp()">最初からやり直す</button>
-        </div>
+        <button class="btn primary" onclick="resetApp()">最初からやり直す</button>
       </div>
     </section>
 

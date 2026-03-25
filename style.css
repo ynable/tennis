@@ -398,6 +398,23 @@ h2 {
   color: #999;
 }
 
+/* 完了済み試合カード */
+.match-card.completed {
+  background: #f0faf0;
+  border-color: #81c784;
+  opacity: 0.85;
+}
+
+.match-card.completed .match-number {
+  color: #388e3c;
+}
+
+.match-card.completed .score-area input {
+  border-color: #81c784;
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
 .match-card.saved {
   border-color: #28a745;
   background: #f0fff4;

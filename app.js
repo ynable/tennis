@@ -343,10 +343,11 @@ function renderMatchList() {
       }
     }
 
+    var savedScore = scores[idx];
     var card = document.createElement('div');
-    card.className = 'match-card';
+    card.className = 'match-card' + (savedScore ? ' completed' : '');
     card.id = 'match-' + idx;
-    card.innerHTML = '<div class="match-header"><span class="match-number">第' + (idx + 1) + '試合</span><span class="court-label">コート ' + match.court + '</span></div><div class="match-teams"><span class="team">' + players[match.team1[0]] + ' ・ ' + players[match.team1[1]] + '</span><span class="vs">VS</span><span class="team">' + players[match.team2[0]] + ' ・ ' + players[match.team2[1]] + '</span></div>';
+    card.innerHTML = '<div class="match-header"><span class="match-number">' + (savedScore ? '✅ ' : '') + '第' + (idx + 1) + '試合</span><span class="court-label">コート ' + match.court + '</span></div><div class="match-teams"><span class="team">' + players[match.team1[0]] + ' ・ ' + players[match.team1[1]] + '</span><span class="vs">VS</span><span class="team">' + players[match.team2[0]] + ' ・ ' + players[match.team2[1]] + '</span></div><div class="score-area"><input type="number" id="score1-' + idx + '" placeholder="得点" min="0" value="' + (savedScore ? savedScore.score1 : '') + '" oninput="onScoreInput(' + idx + ')"><span class="score-dash">−</span><input type="number" id="score2-' + idx + '" placeholder="得点" min="0" value="' + (savedScore ? savedScore.score2 : '') + '" oninput="onScoreInput(' + idx + ')"></div>';
     container.appendChild(card);
   }
 
@@ -419,45 +420,28 @@ function applyMemberChange() {
 
 function goToStep5() {
   document.getElementById('aggregateArea').classList.remove('visible');
-  renderScoreInputList();
-  document.getElementById('resultArea').style.display = 'none';
+  showResults();
   showStep('step5');
-}
-
-function renderScoreInputList() {
-  var container = document.getElementById('scoreInputList');
-  container.innerHTML = '';
-  var currentRound = 0;
-
-  for (var idx = 0; idx < matches.length; idx++) {
-    var match = matches[idx];
-    if (match.round !== currentRound) {
-      currentRound = match.round;
-      var rh = document.createElement('div');
-      rh.className = 'match-round-header';
-      rh.textContent = '第' + currentRound + 'ラウンド';
-      container.appendChild(rh);
-    }
-
-    var savedScore = scores[idx];
-    var card = document.createElement('div');
-    card.className = 'match-card score-input-card' + (savedScore ? ' saved' : '');
-    card.id = 'score-card-' + idx;
-    card.innerHTML = '<div class="match-header"><span class="match-number">第' + (idx + 1) + '試合</span><span class="court-label">コート ' + match.court + '</span></div><div class="match-teams"><span class="team">' + players[match.team1[0]] + ' ・ ' + players[match.team1[1]] + '</span><span class="vs">VS</span><span class="team">' + players[match.team2[0]] + ' ・ ' + players[match.team2[1]] + '</span></div><div class="score-area"><input type="number" id="score1-' + idx + '" placeholder="得点" min="0" value="' + (savedScore ? savedScore.score1 : '') + '" oninput="onScoreInput(' + idx + ')"><span class="score-dash">−</span><input type="number" id="score2-' + idx + '" placeholder="得点" min="0" value="' + (savedScore ? savedScore.score2 : '') + '" oninput="onScoreInput(' + idx + ')"></div>';
-    container.appendChild(card);
-  }
 }
 
 function onScoreInput(idx) {
   var s1 = document.getElementById('score1-' + idx).value;
   var s2 = document.getElementById('score2-' + idx).value;
-  var card = document.getElementById('score-card-' + idx);
+  var card = document.getElementById('match-' + idx);
   if (s1 !== '' && s2 !== '') {
     scores[idx] = { score1: parseInt(s1), score2: parseInt(s2) };
-    if (card) card.classList.add('saved');
+    if (card) {
+      card.classList.add('completed');
+      var numEl = card.querySelector('.match-number');
+      if (numEl && numEl.textContent.indexOf('✅') === -1) numEl.textContent = '✅ ' + numEl.textContent;
+    }
   } else {
     delete scores[idx];
-    if (card) card.classList.remove('saved');
+    if (card) {
+      card.classList.remove('completed');
+      var numEl2 = card.querySelector('.match-number');
+      if (numEl2) numEl2.textContent = numEl2.textContent.replace('✅ ', '');
+    }
   }
 }
 
