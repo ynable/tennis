@@ -1,10 +1,10 @@
 /* ============================================
-   テニス ダブルス 組み合わせメーカー - ロジック
+   テニス シングルス 組み合わせメーカー - ロジック
    ============================================ */
 
 // --- グローバル変数 ---
 let courtCount = 2;
-let playerCount = 8;
+let playerCount = 6;
 let players = [];
 let activePlayers = [];
 let matches = [];
@@ -23,10 +23,10 @@ function showStep(stepId) {
 function goToStep1() { showStep('step1'); }
 
 function goToStep2() {
-  const courtInput = parseInt(document.getElementById('courtCount').value);
-  const playerInput = parseInt(document.getElementById('playerCountInput').value);
-  const infoEl = document.getElementById('step1Info');
-  const errorEl = document.getElementById('step1Error');
+  var courtInput = parseInt(document.getElementById('courtCount').value);
+  var playerInput = parseInt(document.getElementById('playerCountInput').value);
+  var infoEl = document.getElementById('step1Info');
+  var errorEl = document.getElementById('step1Error');
 
   infoEl.classList.remove('visible'); infoEl.textContent = '';
   errorEl.classList.remove('visible'); errorEl.textContent = '';
@@ -35,25 +35,28 @@ function goToStep2() {
     errorEl.textContent = 'コート数は1以上を入力してください。';
     errorEl.classList.add('visible'); return;
   }
-  if (isNaN(playerInput) || playerInput < 4) {
-    errorEl.textContent = '参加人数は4人以上を入力してください。';
+  if (isNaN(playerInput) || playerInput < 2) {
+    errorEl.textContent = '参加人数は2人以上を入力してください。';
     errorEl.classList.add('visible'); return;
   }
 
   courtCount = courtInput;
   playerCount = playerInput;
-  const maxOnCourt = courtCount * 4;
+  var maxOnCourt = courtCount * 2;
 
   if (playerCount > maxOnCourt) {
     infoEl.textContent = 'ℹ️ ' + courtCount + 'コート(最大' + maxOnCourt + '人)に対して' + playerCount + '人です。毎ラウンド' + (playerCount - maxOnCourt) + '人が休みになります。';
     infoEl.classList.add('visible');
   } else if (playerCount < maxOnCourt) {
-    const activeCourts = Math.floor(playerCount / 4);
+    var activeCourts = Math.floor(playerCount / 2);
     if (activeCourts < 1) {
-      errorEl.textContent = 'ダブルスには最低4人必要です。';
+      errorEl.textContent = 'シングルスには最低2人必要です。';
       errorEl.classList.add('visible'); return;
     }
-    infoEl.textContent = 'ℹ️ ' + playerCount + '人なので、実際に使用するコートは' + activeCourts + 'コートになります（' + (playerCount - activeCourts * 4) + '人が毎ラウンド休み）。';
+    var rest = playerCount - activeCourts * 2;
+    var msg = 'ℹ️ ' + playerCount + '人なので、実際に使用するコートは' + activeCourts + 'コートになります。';
+    if (rest > 0) msg += '毎ラウンド' + rest + '人が休みになります。';
+    infoEl.textContent = msg;
     infoEl.classList.add('visible');
   }
 
@@ -65,9 +68,9 @@ function goToStep2FromStep3() { showStep('step2'); }
 
 function goToStep3() {
   players = [];
-  for (let i = 0; i < playerCount; i++) {
-    const input = document.getElementById('player-' + i);
-    const name = input.value.trim() || ('プレイヤー' + (i + 1));
+  for (var i = 0; i < playerCount; i++) {
+    var input = document.getElementById('player-' + i);
+    var name = input.value.trim() || ('プレイヤー' + (i + 1));
     players.push(name);
   }
   activePlayers = Array.from({ length: playerCount }, function(_, i) { return i; });
@@ -75,10 +78,10 @@ function goToStep3() {
 }
 
 function renderPlayerInputs() {
-  const container = document.getElementById('playerInputs');
+  var container = document.getElementById('playerInputs');
   container.innerHTML = '';
-  for (let i = 0; i < playerCount; i++) {
-    const group = document.createElement('div');
+  for (var i = 0; i < playerCount; i++) {
+    var group = document.createElement('div');
     group.className = 'player-input-group';
     group.innerHTML = '<span class="player-number">' + (i + 1) + '</span><input type="text" id="player-' + i + '" placeholder="プレイヤー' + (i + 1) + 'の名前">';
     container.appendChild(group);
@@ -86,7 +89,7 @@ function renderPlayerInputs() {
 }
 
 function generateMatches() {
-  const firstMatchType = document.querySelector('input[name="firstMatch"]:checked').value;
+  var firstMatchType = document.querySelector('input[name="firstMatch"]:checked').value;
   matches = [];
   scores = {};
   generateRoundsFrom(0, firstMatchType);
@@ -97,18 +100,15 @@ function generateMatches() {
 function generateRoundsFrom(fromRound, firstMatchType) {
   var totalPlayers = players.length;
   var currentActive = activePlayers.slice();
-  if (currentActive.length < 4) return;
+  if (currentActive.length < 2) return;
 
-  var pairCount = [];
   var oppCount = [];
   var lastPlayedRound = [];
   var playCountArr = [];
   var i, j;
   for (i = 0; i < totalPlayers; i++) {
-    pairCount[i] = [];
     oppCount[i] = [];
     for (j = 0; j < totalPlayers; j++) {
-      pairCount[i][j] = 0;
       oppCount[i][j] = 0;
     }
     lastPlayedRound[i] = -2;
@@ -119,18 +119,9 @@ function generateRoundsFrom(fromRound, firstMatchType) {
     for (i = 0; i < matches.length; i++) {
       var m = matches[i];
       var r0 = m.round - 1;
-      pairCount[m.team1[0]][m.team1[1]]++;
-      pairCount[m.team1[1]][m.team1[0]]++;
-      pairCount[m.team2[0]][m.team2[1]]++;
-      pairCount[m.team2[1]][m.team2[0]]++;
-      var t1 = m.team1, t2 = m.team2;
-      for (var a = 0; a < t1.length; a++) {
-        for (var b = 0; b < t2.length; b++) {
-          oppCount[t1[a]][t2[b]]++;
-          oppCount[t2[b]][t1[a]]++;
-        }
-      }
-      var all = t1.concat(t2);
+      oppCount[m.player1][m.player2]++;
+      oppCount[m.player2][m.player1]++;
+      var all = [m.player1, m.player2];
       for (var k = 0; k < all.length; k++) {
         lastPlayedRound[all[k]] = r0;
         playCountArr[all[k]]++;
@@ -139,16 +130,16 @@ function generateRoundsFrom(fromRound, firstMatchType) {
   }
 
   var matchIndex = matches.length;
-  var activeCourts = Math.min(courtCount, Math.floor(currentActive.length / 4));
+  var activeCourts = Math.min(courtCount, Math.floor(currentActive.length / 2));
   if (activeCourts < 1) return;
   var matchesPerRound = activeCourts;
   var totalRounds = Math.ceil(TOTAL_MATCHES / matchesPerRound);
 
   for (var round = fromRound; round < totalRounds; round++) {
     var roundNumber = round + 1;
-    var roundActiveCourts = Math.min(courtCount, Math.floor(currentActive.length / 4));
+    var roundActiveCourts = Math.min(courtCount, Math.floor(currentActive.length / 2));
     if (roundActiveCourts < 1) break;
-    var roundPlayersPerRound = roundActiveCourts * 4;
+    var roundPlayersPerRound = roundActiveCourts * 2;
 
     var roundPlayers;
     if (round === 0 && firstMatchType === 'sequential') {
@@ -161,32 +152,23 @@ function generateRoundsFrom(fromRound, firstMatchType) {
     if (round === 0 && firstMatchType === 'sequential') {
       roundMatchups = [];
       for (var c = 0; c < roundActiveCourts; c++) {
-        var base = c * 4;
-        roundMatchups.push({ team1: [roundPlayers[base], roundPlayers[base+1]], team2: [roundPlayers[base+2], roundPlayers[base+3]] });
+        var base = c * 2;
+        roundMatchups.push({ player1: roundPlayers[base], player2: roundPlayers[base+1] });
       }
     } else {
-      roundMatchups = assignTeams(roundPlayers, roundActiveCourts, pairCount, oppCount);
+      roundMatchups = assignSinglesMatchups(roundPlayers, roundActiveCourts, oppCount);
     }
 
     for (var mi = 0; mi < roundMatchups.length; mi++) {
       if (matchIndex >= TOTAL_MATCHES) break;
       var matchup = roundMatchups[mi];
-      matches.push({ round: roundNumber, court: mi + 1, team1: matchup.team1, team2: matchup.team2 });
-      pairCount[matchup.team1[0]][matchup.team1[1]]++;
-      pairCount[matchup.team1[1]][matchup.team1[0]]++;
-      pairCount[matchup.team2[0]][matchup.team2[1]]++;
-      pairCount[matchup.team2[1]][matchup.team2[0]]++;
-      for (var a2 = 0; a2 < matchup.team1.length; a2++) {
-        for (var b2 = 0; b2 < matchup.team2.length; b2++) {
-          oppCount[matchup.team1[a2]][matchup.team2[b2]]++;
-          oppCount[matchup.team2[b2]][matchup.team1[a2]]++;
-        }
-      }
-      var allM = matchup.team1.concat(matchup.team2);
-      for (var k2 = 0; k2 < allM.length; k2++) {
-        lastPlayedRound[allM[k2]] = round;
-        playCountArr[allM[k2]]++;
-      }
+      matches.push({ round: roundNumber, court: mi + 1, player1: matchup.player1, player2: matchup.player2 });
+      oppCount[matchup.player1][matchup.player2]++;
+      oppCount[matchup.player2][matchup.player1]++;
+      lastPlayedRound[matchup.player1] = round;
+      lastPlayedRound[matchup.player2] = round;
+      playCountArr[matchup.player1]++;
+      playCountArr[matchup.player2]++;
       matchIndex++;
     }
     if (matchIndex >= TOTAL_MATCHES) break;
@@ -271,7 +253,7 @@ function selectPlayersForRound(activePlayersList, needed, lastPlayedRound, curre
   return selected;
 }
 
-function assignTeams(roundPlayers, courts, pairCount, oppCount) {
+function assignSinglesMatchups(roundPlayers, courts, oppCount) {
   var shuffled = roundPlayers.slice();
   shuffleArray(shuffled);
   var bestMatchups = null;
@@ -283,12 +265,10 @@ function assignTeams(roundPlayers, courts, pairCount, oppCount) {
     var matchups = [];
     var totalScore = 0;
     for (var c = 0; c < courts; c++) {
-      var base = c * 4;
-      var p1 = candidate[base], p2 = candidate[base+1], p3 = candidate[base+2], p4 = candidate[base+3];
-      var ps = pairCount[p1][p2] + pairCount[p3][p4];
-      var os = oppCount[p1][p3] + oppCount[p1][p4] + oppCount[p2][p3] + oppCount[p2][p4];
-      totalScore += ps * 3 + os;
-      matchups.push({ team1: [p1, p2], team2: [p3, p4] });
+      var base = c * 2;
+      var p1 = candidate[base], p2 = candidate[base+1];
+      totalScore += oppCount[p1][p2];
+      matchups.push({ player1: p1, player2: p2 });
     }
     if (totalScore < bestScore) { bestScore = totalScore; bestMatchups = matchups; }
   }
@@ -327,8 +307,8 @@ function renderMatchList() {
       var playingPlayers = {};
       for (var j = 0; j < matches.length; j++) {
         if (matches[j].round === currentRound) {
-          matches[j].team1.forEach(function(p) { playingPlayers[p] = true; });
-          matches[j].team2.forEach(function(p) { playingPlayers[p] = true; });
+          playingPlayers[matches[j].player1] = true;
+          playingPlayers[matches[j].player2] = true;
         }
       }
       var restNames = [];
@@ -346,7 +326,7 @@ function renderMatchList() {
     var card = document.createElement('div');
     card.className = 'match-card';
     card.id = 'match-' + idx;
-    card.innerHTML = '<div class="match-header"><span class="match-number">第' + (idx + 1) + '試合</span><span class="court-label">コート ' + match.court + '</span></div><div class="match-teams"><span class="team">' + players[match.team1[0]] + ' ・ ' + players[match.team1[1]] + '</span><span class="vs">VS</span><span class="team">' + players[match.team2[0]] + ' ・ ' + players[match.team2[1]] + '</span></div>';
+    card.innerHTML = '<div class="match-header"><span class="match-number">第' + (idx + 1) + '試合</span><span class="court-label">コート ' + match.court + '</span></div><div class="match-teams"><span class="team">' + players[match.player1] + '</span><span class="vs">VS</span><span class="team">' + players[match.player2] + '</span></div>';
     container.appendChild(card);
   }
 
@@ -404,7 +384,7 @@ function addNewPlayer() {
 }
 
 function applyMemberChange() {
-  if (pendingActive.length < 4) { alert('ダブルスには最低4人必要です。'); return; }
+  if (pendingActive.length < 2) { alert('シングルスには最低2人必要です。'); return; }
   activePlayers = pendingActive.slice();
   closeMemberModal();
   var fromRound = memberChangeRound;
@@ -443,7 +423,7 @@ function renderScoreInputList() {
     var card = document.createElement('div');
     card.className = 'match-card score-input-card' + (savedScore ? ' saved' : '');
     card.id = 'score-card-' + idx;
-    card.innerHTML = '<div class="match-header"><span class="match-number">第' + (idx + 1) + '試合</span><span class="court-label">コート ' + match.court + '</span></div><div class="match-teams"><span class="team">' + players[match.team1[0]] + ' ・ ' + players[match.team1[1]] + '</span><span class="vs">VS</span><span class="team">' + players[match.team2[0]] + ' ・ ' + players[match.team2[1]] + '</span></div><div class="score-area"><input type="number" id="score1-' + idx + '" placeholder="得点" min="0" value="' + (savedScore ? savedScore.score1 : '') + '" oninput="onScoreInput(' + idx + ')"><span class="score-dash">−</span><input type="number" id="score2-' + idx + '" placeholder="得点" min="0" value="' + (savedScore ? savedScore.score2 : '') + '" oninput="onScoreInput(' + idx + ')"></div>';
+    card.innerHTML = '<div class="match-header"><span class="match-number">第' + (idx + 1) + '試合</span><span class="court-label">コート ' + match.court + '</span></div><div class="match-teams"><span class="team">' + players[match.player1] + '</span><span class="vs">VS</span><span class="team">' + players[match.player2] + '</span></div><div class="score-area"><input type="number" id="score1-' + idx + '" placeholder="得点" min="0" value="' + (savedScore ? savedScore.score1 : '') + '" oninput="onScoreInput(' + idx + ')"><span class="score-dash">−</span><input type="number" id="score2-' + idx + '" placeholder="得点" min="0" value="' + (savedScore ? savedScore.score2 : '') + '" oninput="onScoreInput(' + idx + ')"></div>';
     container.appendChild(card);
   }
 }
@@ -472,16 +452,22 @@ function showResults() {
     if (!score) continue;
     var s1 = score.score1, s2 = score.score2;
     var match = matches[idx];
-    match.team1.forEach(function(p) {
-      stats[p].pointsFor += s1; stats[p].pointsAgainst += s2;
-      stats[p].diff += (s1 - s2); stats[p].matchCount++;
-      if (s1 > s2) stats[p].wins++; else if (s1 < s2) stats[p].losses++; else stats[p].draws++;
-    });
-    match.team2.forEach(function(p) {
-      stats[p].pointsFor += s2; stats[p].pointsAgainst += s1;
-      stats[p].diff += (s2 - s1); stats[p].matchCount++;
-      if (s2 > s1) stats[p].wins++; else if (s2 < s1) stats[p].losses++; else stats[p].draws++;
-    });
+
+    stats[match.player1].pointsFor += s1;
+    stats[match.player1].pointsAgainst += s2;
+    stats[match.player1].diff += (s1 - s2);
+    stats[match.player1].matchCount++;
+    if (s1 > s2) stats[match.player1].wins++;
+    else if (s1 < s2) stats[match.player1].losses++;
+    else stats[match.player1].draws++;
+
+    stats[match.player2].pointsFor += s2;
+    stats[match.player2].pointsAgainst += s1;
+    stats[match.player2].diff += (s2 - s1);
+    stats[match.player2].matchCount++;
+    if (s2 > s1) stats[match.player2].wins++;
+    else if (s2 < s1) stats[match.player2].losses++;
+    else stats[match.player2].draws++;
   }
 
   var activeStats = stats.filter(function(s) { return s.matchCount > 0; });
