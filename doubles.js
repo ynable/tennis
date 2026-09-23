@@ -92,6 +92,7 @@ function generateMatches() {
   generateRoundsFrom(0, firstMatchType);
   renderMatchList();
   showStep('step4');
+  pushShareState();
 }
 
 function generateRoundsFrom(fromRound, firstMatchType) {
@@ -416,6 +417,7 @@ function applyMemberChange() {
   });
   generateRoundsFrom(fromRound - 1, 'random');
   renderMatchList();
+  pushShareState();
 }
 
 function goToStep5() {
@@ -443,6 +445,7 @@ function onScoreInput(idx) {
       if (numEl2) numEl2.textContent = numEl2.textContent.replace('✅ ', '');
     }
   }
+  pushShareState();
 }
 
 function showResults() {
@@ -509,3 +512,70 @@ function resetApp() {
   document.getElementById('aggregateArea').classList.remove('visible');
   showStep('step1');
 }
+
+// ==========================================================
+// 共有機能 (share-ui.js との統合)
+// ==========================================================
+function getShareState() {
+  return {
+    players: players.slice(),
+    activePlayers: activePlayers.slice(),
+    courtCount: courtCount,
+    matches: matches.map(function (m) {
+      return {
+        round: m.round,
+        court: m.court,
+        team1: m.team1.slice(),
+        team2: m.team2.slice()
+      };
+    }),
+    scores: Object.assign({}, scores)
+  };
+}
+
+function applyShareState(remote) {
+  if (!remote) return;
+  players = (remote.players || []).slice();
+  playerCount = players.length;
+  activePlayers = (remote.activePlayers || players.map(function (_, i) { return i; })).slice();
+  if (typeof remote.courtCount === 'number') courtCount = remote.courtCount;
+  matches = (remote.matches || []).map(function (m) {
+    return {
+      round: m.round,
+      court: m.court,
+      team1: (m.team1 || []).slice(),
+      team2: (m.team2 || []).slice()
+    };
+  });
+  scores = {};
+  var rs = remote.scores || {};
+  Object.keys(rs).forEach(function (k) {
+    scores[k] = { score1: rs[k].score1, score2: rs[k].score2 };
+  });
+  if (matches.length > 0) {
+    renderMatchList();
+    showStep('step4');
+  }
+}
+
+function pushShareState() {
+  if (window.TennisShareUI && !window.TennisShareUI.isRemote()) {
+    window.TennisShareUI.pushState();
+  }
+}
+
+(function initShare() {
+  if (!window.TennisShareUI) return;
+  var container = document.querySelector('.container');
+  if (!container) return;
+  var anchor = container.querySelector('h1');
+  if (!anchor) return;
+  var shareContainer = document.createElement('div');
+  anchor.parentNode.insertBefore(shareContainer, anchor.nextSibling);
+  window.TennisShareUI.setup({
+    mode: 'doubles',
+    getState: getShareState,
+    applyState: applyShareState,
+    container: shareContainer
+  });
+})();

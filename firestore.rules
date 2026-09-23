@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // セッションドキュメント: 誰でも読み書き可能（プロトタイプ用）
+    // 本番運用時は Firebase Auth + role による書き込み制御に変更してください
+    match /sessions/{sessionId} {
+      allow read: if true;
+      allow create: if
+        request.resource.data.keys().hasAll(['mode', 'players', 'matches', 'scores', 'createdAt'])
+        && request.resource.data.mode in ['singles', 'doubles', 'league']
+        && request.resource.data.players.size() <= 80
+        && request.resource.data.matches.size() <= 500;
+      allow update: if
+        // 変更可能なフィールドを制限
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['scores', 'players', 'matches', 'updatedAt', 'hostName'])
+        && request.resource.data.scores.size() <= 500;
+      allow delete: if false;
+
+      // サブコレクション: 参加者リスト
+      match /participants/{participantId} {
+        allow read: if true;
+        allow write: if true;
+      }
+    }
+  }
+}

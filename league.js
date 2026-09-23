@@ -63,6 +63,7 @@ function generateLeague() {
 
   renderMatchList();
   showStep('step3');
+  pushShareState();
 }
 
 function renderMatchList() {
@@ -114,6 +115,7 @@ function onScoreInput(idx) {
       if (numEl2) numEl2.textContent = numEl2.textContent.replace('✅ ', '');
     }
   }
+  pushShareState();
 }
 
 function goToStep4() {
@@ -196,5 +198,55 @@ function resetApp() {
   if (!confirm('すべてのデータをリセットしますか？')) return;
   players = []; matches = []; scores = {};
   document.getElementById('aggregateArea').classList.remove('visible');
-  showStep('step1');
+ 
+
+// ==========================================================
+// 共有機能 (share-ui.js との統合)
+// ==========================================================
+function getShareState() {
+  return {
+    players: players.slice(),
+    matches: matches.map(function (m) { return { player1: m.player1, player2: m.player2 }; }),
+    scores: Object.assign({}, scores)
+  };
+}
+
+function applyShareState(remote) {
+  if (!remote) return;
+  players = (remote.players || []).slice();
+  playerCount = players.length;
+  matches = (remote.matches || []).map(function (m) {
+    return { player1: m.player1, player2: m.player2 };
+  });
+  scores = {};
+  var rs = remote.scores || {};
+  Object.keys(rs).forEach(function (k) {
+    scores[k] = { score1: rs[k].score1, score2: rs[k].score2 };
+  });
+  if (matches.length > 0) {
+    renderMatchList();
+    showStep('step3');
+  }
+}
+
+function pushShareState() {
+  if (window.TennisShareUI && !window.TennisShareUI.isRemote()) {
+    window.TennisShareUI.pushState();
+  }
+}
+
+(function initShare() {
+  if (!window.TennisShareUI) return;
+  var container = document.querySelector('.container');
+  if (!container) return;
+  var anchor = container.querySelector('.league-lead') || container.querySelector('h1');
+  var shareContainer = document.createElement('div');
+  anchor.parentNode.insertBefore(shareContainer, anchor.nextSibling);
+  window.TennisShareUI.setup({
+    mode: 'league',
+    getState: getShareState,
+    applyState: applyShareState,
+    container: shareContainer
+  });
+})(); showStep('step1');
 }

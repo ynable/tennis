@@ -1,0 +1,246 @@
+/* ============================================
+   セッション共有 UI 共通スタイル
+   ============================================ */
+
+.share-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: linear-gradient(135deg, #f0f4ff, #e8f5ff);
+  border: 2px dashed #a0b4f0;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+
+.share-bar.connected {
+  background: linear-gradient(135deg, #e8fff0, #f0fff4);
+  border-color: #6ac48c;
+}
+
+.share-bar-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.share-bar-status .status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #bbb;
+}
+
+.share-bar.connected .status-dot {
+  background: #4caf50;
+  box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.2);
+}
+
+.share-bar-code {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-weight: bold;
+  font-size: 1.1rem;
+  letter-spacing: 0.15em;
+  color: #333;
+}
+
+.share-btn {
+  background: linear-gradient(135deg, #4a90e2, #357abd);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: bold;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.share-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.35);
+}
+
+.share-btn.secondary {
+  background: #fff;
+  color: #4a90e2;
+  border: 2px solid #4a90e2;
+}
+
+/* 共有モーダル */
+.share-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 900;
+  padding: 20px;
+}
+
+.share-modal-overlay.show {
+  display: flex;
+}
+
+.share-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px 24px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.share-modal h3 {
+  color: #4a4a8a;
+  margin-bottom: 8px;
+  font-size: 1.25rem;
+}
+
+.share-modal .share-desc {
+  color: #777;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+.share-code-display {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 2.2rem;
+  font-weight: bold;
+  letter-spacing: 0.25em;
+  color: #4a4a8a;
+  background: #f4f6ff;
+  border: 2px dashed #a0b4f0;
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 16px;
+  user-select: all;
+}
+
+.share-url-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.share-url-row input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-family: monospace;
+}
+
+.share-url-row button {
+  padding: 10px 16px;
+  background: #4a90e2;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.share-modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.share-modal-actions button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  border: none;
+}
+
+.share-modal-actions .close-btn {
+  background: #eee;
+  color: #555;
+}
+
+/* 参加モーダル */
+.join-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 950;
+  padding: 20px;
+}
+
+.join-modal-overlay.show {
+  display: flex;
+}
+
+.join-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px 24px;
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+}
+
+.join-modal h3 {
+  color: #4a4a8a;
+  margin-bottom: 16px;
+}
+
+.join-modal input {
+  width: 100%;
+  padding: 14px;
+  border: 2px solid #ddd;
+  border-radius: 10px;
+  font-size: 1.3rem;
+  font-family: monospace;
+  letter-spacing: 0.2em;
+  text-align: center;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.join-modal input:focus {
+  outline: none;
+  border-color: #4a90e2;
+}
+
+.join-modal .error {
+  color: #c62828;
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+  min-height: 1.2em;
+}
+
+/* トースト */
+.share-toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #333;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 24px;
+  font-size: 0.9rem;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.share-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

@@ -2,3 +2,7 @@
 *.swp
 *.swo
 *~
+
+# Firebase
+firebase-debug.log
+.firebase/
