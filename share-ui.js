@@ -9,23 +9,24 @@
     unsubscribe: null,
     getState: null,
     applyState: null,
-    onGenerate: null,           // オーナーが「生成」を押したときに呼ぶコールバック
-    container: null,            // .container の参照 (ロビーセクション配置用)
+    onGenerate: null,
+    container: null,
     isApplyingRemote: false,
     isOwner: false,
     allowGuestEdit: false,
-    role: "editor",             // 'editor' | 'viewer' - 派生値
+    role: "editor",
     lastSyncedKey: null,
     pushTimer: null,
-    // ロビー用
     expectedCount: 0,
     courtCount: 0,
     remotePlayers: [],
-    mySlot: null,               // {index, name, role}
+    mySlot: null,               // {index, name} - role は廃止 (allowGuestEdit で一元管理)
     lobbyVisible: false
   };
 
-  // ---- キー順に依存しない JSON 文字列化 (echo 判定用) ----
+  var gachaSpinInterval = null;
+
+  // ---- stableStringify ----
   function stableStringify(v) {
     if (v === null || typeof v !== "object") return JSON.stringify(v);
     if (Array.isArray(v)) return "[" + v.map(stableStringify).join(",") + "]";
@@ -34,7 +35,6 @@
       return JSON.stringify(k) + ":" + stableStringify(v[k]);
     }).join(",") + "}";
   }
-
   function computeKey(s) {
     return stableStringify({
       players: s.players || [],
@@ -42,7 +42,6 @@
       scores: s.scores || {}
     });
   }
-
   function whenReady() {
     if (window.TennisShare) return Promise.resolve();
     return new Promise(function (res) {
@@ -50,13 +49,10 @@
     });
   }
 
-  // ---- localStorage: 自分のスロット情報 ----
+  // ---- localStorage ----
   function mySlotKey(code) { return "tennis:me:" + code.toUpperCase(); }
   function loadMySlot(code) {
-    try {
-      var raw = localStorage.getItem(mySlotKey(code));
-      return raw ? JSON.parse(raw) : null;
-    } catch (e) { return null; }
+    try { var raw = localStorage.getItem(mySlotKey(code)); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
   }
   function saveMySlot(code, info) {
     try { localStorage.setItem(mySlotKey(code), JSON.stringify(info)); } catch (e) {}
@@ -86,7 +82,6 @@
       applyEffectiveRole();
       updateBarUI();
       startSubscription(codeFromUrl);
-      if (opts.onAutoJoin) opts.onAutoJoin();
     }
   }
 
@@ -107,7 +102,6 @@
         '<button class="share-btn" id="shareCreateBtn">共有を作成</button>' +
       "</div>";
     container.appendChild(bar);
-
     document.getElementById("shareCreateBtn").addEventListener("click", handleCreateClick);
     document.getElementById("shareJoinBtn").addEventListener("click", openJoinModal);
   }
@@ -116,10 +110,9 @@
   // ロビー開始 (mode.js から呼ばれる)
   // =========================================================
   async function startLobby(params) {
-    // params: { expectedCount, courtCount }
     await whenReady();
     if (state.sessionCode) {
-      alert("既にセッションに参加中です。新しく作るにはリセットしてください。");
+      alert("既にセッションに参加中です。");
       return null;
     }
     try {
@@ -129,7 +122,7 @@
       });
       state.sessionCode = code;
       state.isOwner = true;
-      state.allowGuestEdit = true;
+      state.allowGuestEdit = false;
       state.expectedCount = params.expectedCount;
       state.courtCount = params.courtCount;
       window.TennisShare.markOwned(code, state.mode);
@@ -140,14 +133,11 @@
       openShareModal(code);
       return code;
     } catch (e) {
-      alert("セッション開始に失敗しました: " + (e.message || e));
+      alert("セッション開始に失敗: " + (e.message || e));
       return null;
     }
   }
 
-  // =========================================================
-  // 生成後にセッション化する (旧フロー)
-  // =========================================================
   async function handleCreateClick() {
     if (state.sessionCode) {
       openShareModal(state.sessionCode);
@@ -171,7 +161,7 @@
       startSubscription(code);
       openShareModal(code);
     } catch (e) {
-      alert("セッション作成に失敗しました: " + (e.message || e));
+      alert("セッション作成に失敗: " + (e.message || e));
     }
   }
 
@@ -185,7 +175,6 @@
 
   function resetToInitialState() {
     if (state.unsubscribe) { state.unsubscribe(); state.unsubscribe = null; }
-    var oldCode = state.sessionCode;
     state.sessionCode = null;
     state.isOwner = false;
     state.allowGuestEdit = false;
@@ -227,36 +216,29 @@
       var allowChanged = newAllow !== state.allowGuestEdit;
       state.allowGuestEdit = newAllow;
 
-      // ロビー状態か試合状態かを判定
       var inLobby = !Array.isArray(remote.matches) || remote.matches.length === 0;
 
       if (inLobby) {
-        // 自分のスロット確認 - localStorage の情報が remote と一致するかチェック
         var stored = loadMySlot(code);
         if (stored) {
           if (state.remotePlayers[stored.index] === stored.name) {
             state.mySlot = stored;
           } else {
-            // 名前が別人に上書きされてる (異常) → クリア
             clearMySlot(code);
             state.mySlot = null;
           }
         } else {
           state.mySlot = null;
         }
-        // ロビーを表示
         showLobby();
       } else {
-        // 試合状態: 通常の同期処理
         hideLobby();
-
         if (allowChanged || state.role !== computeEffectiveRoleValue()) {
           applyEffectiveRole();
           syncShareModalPermission();
         }
-
         var key = computeKey(remote);
-        if (key === state.lastSyncedKey) return; // 自分の echo
+        if (key === state.lastSyncedKey) return;
         state.lastSyncedKey = key;
         state.isApplyingRemote = true;
         try {
@@ -275,7 +257,6 @@
   // =========================================================
   function showLobby() {
     var section = document.getElementById("shareLobby") || createLobbySection();
-    // 他の step を隠す
     document.querySelectorAll(".container .step").forEach(function (s) { s.classList.remove("active"); });
     section.classList.add("active");
     state.lobbyVisible = true;
@@ -300,25 +281,27 @@
           '<span class="share-bar-code" id="lobbyCode"></span>' +
           '<button class="share-btn secondary" id="lobbyShareBtn">🔗 共有</button>' +
         '</div>' +
-        '<p class="lobby-progress"><span id="lobbyFilled">0</span> / <span id="lobbyTotal">0</span> 人</p>' +
+        '<p class="lobby-progress"><b id="lobbyFilled">0</b> / <b id="lobbyTotal">0</b> 人</p>' +
       '</div>' +
       '<div id="lobbySlots" class="lobby-slots"></div>' +
       '<div id="lobbyJoinForm" class="lobby-join-form" style="display:none">' +
         '<h3>あなたも参加する</h3>' +
         '<div class="lobby-join-row">' +
           '<input type="text" id="lobbyJoinName" placeholder="あなたの名前" maxlength="20">' +
+          '<button class="btn primary" id="lobbyJoinBtn">🎰 抽選する</button>' +
         '</div>' +
-        '<div class="lobby-role-select">' +
-          '<label><input type="radio" name="lobbyRole" value="viewer" checked> 👀 閲覧のみ</label>' +
-          '<label><input type="radio" name="lobbyRole" value="editor"> 🖊️ 得点入力あり</label>' +
-        '</div>' +
-        '<button class="btn primary" id="lobbyJoinBtn">🎲 参加する</button>' +
       '</div>' +
       '<div id="lobbyMyInfo" class="lobby-my-info" style="display:none">' +
         '<div class="lobby-my-number">あなたは <span class="lobby-number-big" id="lobbyMyNumber">?</span> 番！</div>' +
-        '<p class="lobby-role-badge" id="lobbyMyRole"></p>' +
         '<p class="lobby-wait-msg">オーナーが組み合わせを作成するのを待っています...</p>' +
-        '<button class="btn secondary btn-small" id="lobbyLeaveBtn">参加をやめる (別の名前にする)</button>' +
+        '<button class="btn secondary btn-small" id="lobbyLeaveBtn">やめて別の名前にする</button>' +
+      '</div>' +
+      '<div id="lobbyOwnerAdd" class="lobby-owner-add" style="display:none">' +
+        '<h3>👑 携帯なし勢を手動で追加</h3>' +
+        '<div class="lobby-join-row">' +
+          '<input type="text" id="ownerAddName" placeholder="プレイヤーの名前" maxlength="20">' +
+          '<button class="btn secondary" id="ownerAddBtn">🎰 追加</button>' +
+        '</div>' +
       '</div>' +
       '<div id="lobbyOwnerActions" class="lobby-owner-actions" style="display:none">' +
         '<button class="btn primary" id="lobbyGenerateBtn">組み合わせを生成 →</button>' +
@@ -334,14 +317,17 @@
       if (e.key === "Enter") handleSelfJoin();
     });
     document.getElementById("lobbyLeaveBtn").addEventListener("click", handleLeaveSlot);
+    document.getElementById("ownerAddBtn").addEventListener("click", handleOwnerAddManual);
+    document.getElementById("ownerAddName").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") handleOwnerAddManual();
+    });
     document.getElementById("lobbyGenerateBtn").addEventListener("click", handleGenerate);
     return section;
   }
 
   function updateLobbyContent() {
     if (!state.lobbyVisible) return;
-    var section = document.getElementById("shareLobby");
-    if (!section) return;
+    if (!document.getElementById("shareLobby")) return;
 
     document.getElementById("lobbyCode").textContent = state.sessionCode || "";
     var filled = state.remotePlayers.filter(function (p) { return p != null && p !== ""; }).length;
@@ -349,7 +335,6 @@
     document.getElementById("lobbyFilled").textContent = filled;
     document.getElementById("lobbyTotal").textContent = total;
 
-    // スロット表示
     var slotsEl = document.getElementById("lobbySlots");
     slotsEl.innerHTML = "";
     for (var i = 0; i < total; i++) {
@@ -365,67 +350,105 @@
       slotsEl.appendChild(div);
     }
 
-    // 自分の状態
+    // 自己参加フォーム / 参加後の表示
+    var joinForm = document.getElementById("lobbyJoinForm");
+    var myInfo = document.getElementById("lobbyMyInfo");
     if (state.mySlot) {
-      document.getElementById("lobbyJoinForm").style.display = "none";
-      document.getElementById("lobbyMyInfo").style.display = "";
+      joinForm.style.display = "none";
+      myInfo.style.display = "";
       document.getElementById("lobbyMyNumber").textContent = state.mySlot.index + 1;
-      var roleLabel = state.mySlot.role === "editor" ? "🖊️ 得点入力あり" : "👀 閲覧のみ";
-      document.getElementById("lobbyMyRole").textContent = "選択したロール: " + roleLabel;
     } else if (filled >= total) {
-      document.getElementById("lobbyJoinForm").style.display = "none";
-      document.getElementById("lobbyMyInfo").style.display = "none";
+      joinForm.style.display = "none";
+      myInfo.style.display = "none";
     } else {
-      document.getElementById("lobbyJoinForm").style.display = "";
-      document.getElementById("lobbyMyInfo").style.display = "none";
+      joinForm.style.display = "";
+      myInfo.style.display = "none";
     }
 
-    // オーナー操作
+    // オーナー用の手動追加 & 生成ボタン
+    var ownerAdd = document.getElementById("lobbyOwnerAdd");
     var ownerActions = document.getElementById("lobbyOwnerActions");
-    var generateBtn = document.getElementById("lobbyGenerateBtn");
-    var hint = document.getElementById("lobbyGenerateHint");
     if (state.isOwner) {
+      ownerAdd.style.display = filled < total ? "" : "none";
       ownerActions.style.display = "";
       var minPlayers = state.mode === "singles" ? 2 : (state.mode === "doubles" ? 4 : 2);
       var canGenerate = filled >= minPlayers;
+      var generateBtn = document.getElementById("lobbyGenerateBtn");
+      var hint = document.getElementById("lobbyGenerateHint");
       generateBtn.disabled = !canGenerate;
-      if (!canGenerate) {
-        hint.textContent = "最低 " + minPlayers + " 人必要です (現在 " + filled + " 人)";
-      } else if (filled < total) {
-        hint.textContent = filled + " / " + total + " 人。今の人数で生成することもできます。";
-      } else {
-        hint.textContent = "全員揃いました！";
-      }
+      if (!canGenerate) hint.textContent = "最低 " + minPlayers + " 人必要 (現在 " + filled + " 人)";
+      else if (filled < total) hint.textContent = filled + " / " + total + " 人。今の人数で生成することもできます。";
+      else hint.textContent = "全員揃いました！";
     } else {
+      ownerAdd.style.display = "none";
       ownerActions.style.display = "none";
+    }
+  }
+
+  // =========================================================
+  // 参加ハンドラー
+  // =========================================================
+  async function claimWithGacha(name, onSuccess, onError) {
+    showGachaModal(name, state.expectedCount);
+    var startTime = Date.now();
+    try {
+      var idx = await window.TennisShare.claimSlot(state.sessionCode, name);
+      var minDur = 1600;
+      var elapsed = Date.now() - startTime;
+      if (elapsed < minDur) {
+        await new Promise(function (r) { setTimeout(r, minDur - elapsed); });
+      }
+      revealGachaNumber(idx + 1, name);
+      setTimeout(function () {
+        closeGachaModal();
+        if (onSuccess) onSuccess(idx);
+        updateLobbyContent();
+      }, 2400);
+    } catch (e) {
+      closeGachaModal();
+      showToast("失敗: " + (e.message || e));
+      if (onError) onError(e);
     }
   }
 
   async function handleSelfJoin() {
     var nameInput = document.getElementById("lobbyJoinName");
     var name = nameInput.value.trim();
-    if (!name) {
-      showToast("名前を入力してください");
-      nameInput.focus();
-      return;
-    }
-    var roleEl = document.querySelector('input[name="lobbyRole"]:checked');
-    var chosenRole = roleEl ? roleEl.value : "viewer";
+    if (!name) { showToast("名前を入力してください"); nameInput.focus(); return; }
     var btn = document.getElementById("lobbyJoinBtn");
     btn.disabled = true;
-    btn.textContent = "参加中...";
-    try {
-      var idx = await window.TennisShare.claimSlot(state.sessionCode, name);
-      state.mySlot = { index: idx, name: name, role: chosenRole };
-      saveMySlot(state.sessionCode, state.mySlot);
-      showToast("🎲 あなたは " + (idx + 1) + " 番！");
-      updateLobbyContent();
-      applyEffectiveRole();
-    } catch (e) {
-      showToast("参加に失敗: " + (e.message || e));
-      btn.disabled = false;
-      btn.textContent = "🎲 参加する";
-    }
+    var origText = btn.textContent;
+    btn.textContent = "抽選中...";
+    await claimWithGacha(name,
+      function (idx) {
+        state.mySlot = { index: idx, name: name };
+        saveMySlot(state.sessionCode, state.mySlot);
+        applyEffectiveRole();
+        nameInput.value = "";
+      },
+      function () {
+        btn.disabled = false;
+        btn.textContent = origText;
+      });
+    btn.disabled = false;
+    btn.textContent = origText;
+  }
+
+  async function handleOwnerAddManual() {
+    var nameInput = document.getElementById("ownerAddName");
+    var name = nameInput.value.trim();
+    if (!name) { showToast("名前を入力してください"); nameInput.focus(); return; }
+    var btn = document.getElementById("ownerAddBtn");
+    btn.disabled = true;
+    var origText = btn.textContent;
+    btn.textContent = "抽選中...";
+    await claimWithGacha(name,
+      function () {
+        nameInput.value = "";
+        setTimeout(function () { nameInput.focus(); }, 100);
+      });
+    btn.disabled = false;
+    btn.textContent = origText;
   }
 
   async function handleLeaveSlot() {
@@ -433,7 +456,6 @@
     if (!confirm("参加をやめて別の名前で入り直しますか？")) return;
     var idx = state.mySlot.index;
     try {
-      // 自分のスロットを空にする (トランザクションを使わず単純 update; 競合可能性は低い)
       var players = state.remotePlayers.slice();
       if (players[idx] === state.mySlot.name) {
         players[idx] = null;
@@ -453,16 +475,12 @@
       return;
     }
     var namedPlayers = state.remotePlayers.filter(function (p) { return p != null && p !== ""; });
-    if (namedPlayers.length < 2) {
-      alert("最低 2 人必要です");
-      return;
-    }
+    if (namedPlayers.length < 2) { alert("最低 2 人必要です"); return; }
     var btn = document.getElementById("lobbyGenerateBtn");
     btn.disabled = true;
     btn.textContent = "生成中...";
     try {
       await state.onGenerate(namedPlayers, state.courtCount);
-      // pushShareState は mode.js 内で呼ばれる想定
     } catch (e) {
       alert("生成に失敗: " + (e.message || e));
       btn.disabled = false;
@@ -477,6 +495,99 @@
   }
 
   // =========================================================
+  // ガチャ演出 (パチンコ・スロット風)
+  // =========================================================
+  function createGachaModal() {
+    var modal = document.createElement("div");
+    modal.className = "gacha-modal";
+    modal.id = "gachaModal";
+    modal.innerHTML =
+      '<div class="gacha-bg-flash" id="gachaBgFlash"></div>' +
+      '<div class="gacha-confetti" id="gachaConfetti"></div>' +
+      '<div class="gacha-content">' +
+        '<div class="gacha-status" id="gachaStatus">🎰 抽選中...</div>' +
+        '<div class="gacha-slot-frame">' +
+          '<div class="gacha-slot-lights"><span></span><span></span><span></span><span></span><span></span></div>' +
+          '<div class="gacha-slot-reel">' +
+            '<div class="gacha-number" id="gachaNumber">?</div>' +
+          '</div>' +
+          '<div class="gacha-slot-lights"><span></span><span></span><span></span><span></span><span></span></div>' +
+        '</div>' +
+        '<div class="gacha-name" id="gachaName"></div>' +
+      '</div>';
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  function showGachaModal(name, totalCount) {
+    var modal = document.getElementById("gachaModal") || createGachaModal();
+    var numEl = document.getElementById("gachaNumber");
+    var nameEl = document.getElementById("gachaName");
+    var statusEl = document.getElementById("gachaStatus");
+    var confettiEl = document.getElementById("gachaConfetti");
+    var bgEl = document.getElementById("gachaBgFlash");
+
+    numEl.className = "gacha-number spinning";
+    numEl.textContent = "?";
+    nameEl.textContent = name;
+    nameEl.classList.remove("show");
+    statusEl.textContent = "🎰 抽選中...";
+    statusEl.className = "gacha-status";
+    confettiEl.innerHTML = "";
+    bgEl.className = "gacha-bg-flash";
+    modal.classList.remove("revealed");
+    modal.classList.add("show");
+
+    var maxN = Math.max(2, totalCount || 20);
+    gachaSpinInterval = setInterval(function () {
+      numEl.textContent = Math.floor(Math.random() * maxN) + 1;
+    }, 55);
+  }
+
+  function revealGachaNumber(num, name) {
+    if (gachaSpinInterval) { clearInterval(gachaSpinInterval); gachaSpinInterval = null; }
+    var modal = document.getElementById("gachaModal");
+    var numEl = document.getElementById("gachaNumber");
+    var nameEl = document.getElementById("gachaName");
+    var statusEl = document.getElementById("gachaStatus");
+    var bgEl = document.getElementById("gachaBgFlash");
+
+    numEl.textContent = num;
+    numEl.className = "gacha-number reveal";
+    statusEl.textContent = "🎉 " + num + " 番 決定！";
+    statusEl.classList.add("revealed");
+    bgEl.classList.add("flash");
+    modal.classList.add("revealed");
+    setTimeout(function () { nameEl.classList.add("show"); }, 350);
+    spawnConfetti();
+  }
+
+  function closeGachaModal() {
+    if (gachaSpinInterval) { clearInterval(gachaSpinInterval); gachaSpinInterval = null; }
+    var modal = document.getElementById("gachaModal");
+    if (modal) modal.classList.remove("show");
+  }
+
+  function spawnConfetti() {
+    var confettiEl = document.getElementById("gachaConfetti");
+    if (!confettiEl) return;
+    var colors = ["#ff6b6b", "#ffd93d", "#6bcf7e", "#4a90e2", "#f5576c", "#f093fb", "#00e5ff"];
+    var shapes = ["circle", "square", "rect"];
+    for (var i = 0; i < 60; i++) {
+      var piece = document.createElement("div");
+      piece.className = "confetti-piece confetti-" + shapes[i % shapes.length];
+      piece.style.left = Math.random() * 100 + "%";
+      piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.animationDuration = (1.6 + Math.random() * 1.4) + "s";
+      piece.style.animationDelay = Math.random() * 0.3 + "s";
+      piece.style.width = piece.style.height = (7 + Math.random() * 8) + "px";
+      piece.style.setProperty("--rot", (Math.random() * 720) + "deg");
+      piece.style.setProperty("--sway", ((Math.random() - 0.5) * 200) + "px");
+      confettiEl.appendChild(piece);
+    }
+  }
+
+  // =========================================================
   // Push (デバウンス + echo 抑止)
   // =========================================================
   function pushState() {
@@ -485,11 +596,7 @@
     clearTimeout(state.pushTimer);
     state.pushTimer = setTimeout(async function () {
       var st = state.getState();
-      var pushData = {
-        players: st.players,
-        matches: st.matches,
-        scores: st.scores
-      };
+      var pushData = { players: st.players, matches: st.matches, scores: st.scores };
       state.lastSyncedKey = computeKey(pushData);
       try {
         await window.TennisShare.updateSession(state.sessionCode, pushData);
@@ -506,8 +613,6 @@
   function computeEffectiveRoleValue() {
     if (!state.sessionCode) return "editor";
     if (state.isOwner) return "editor";
-    // ロビー参加時の自己選択を優先
-    if (state.mySlot && state.mySlot.role) return state.mySlot.role;
     return state.allowGuestEdit ? "editor" : "viewer";
   }
 
@@ -524,9 +629,7 @@
     applyEffectiveRole();
     try {
       await window.TennisShare.updateSession(state.sessionCode, { allowGuestEdit: value });
-    } catch (e) {
-      showToast("権限設定の変更に失敗しました");
-    }
+    } catch (e) { showToast("権限設定の変更に失敗しました"); }
   }
 
   function updateBarUI() {
@@ -596,7 +699,7 @@
         '<div class="share-permission-section" id="sharePermissionSection">' +
           '<label class="share-permission-label">' +
             '<input type="checkbox" id="sharePermissionCheckbox">' +
-            '<span><b>参加者にも得点入力を許可する</b><br><small>ロビーで選ばれた個別ロールも優先されます。</small></span>' +
+            '<span><b>参加者にも得点入力を許可する</b><br><small>オフの間、参加者は閲覧のみになります。</small></span>' +
           "</label>" +
         "</div>" +
         '<div class="share-modal-actions">' +
@@ -604,7 +707,6 @@
         "</div>" +
       "</div>";
     document.body.appendChild(overlay);
-
     document.getElementById("sharePermissionCheckbox").addEventListener("change", function (e) {
       setAllowGuestEditByOwner(e.target.checked);
     });
@@ -649,7 +751,6 @@
         "</div>" +
       "</div>";
     document.body.appendChild(overlay);
-
     var submit = function () {
       var code = document.getElementById("joinCodeInput").value.trim().toUpperCase();
       if (code.length !== 6) {
