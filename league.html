@@ -40,7 +40,10 @@
         <p id="step1Info" class="info-message"></p>
         <p id="step1Error" class="error-message"></p>
       </div>
-      <button class="btn primary" onclick="goToStep2()">次へ</button>
+      <div class="step1-actions">
+        <button class="btn secondary" onclick="goToStep2()">次へ (1人で作成)</button>
+        <button class="btn primary" onclick="startSharedSession()">🎾 セッションを開始 (共有)</button>
+      </div>
     </section>
 
     <!-- Step 2: プレイヤー名 -->

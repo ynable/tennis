@@ -163,6 +163,279 @@ body.view-only .view-only-badge {
   display: inline-block;
 }
 
+/* Step 1 のアクションボタン (通常 / 共有) */
+.step1-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.step1-actions .btn {
+  flex: 1;
+  min-width: 150px;
+}
+
+/* ============================================
+   ロビー (参加者待ち画面)
+   ============================================ */
+
+.lobby-step h2 {
+  text-align: center;
+  color: #4a4a8a;
+  margin-bottom: 16px;
+}
+
+.lobby-summary {
+  background: linear-gradient(135deg, #f4f6ff, #e8f4ff);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.lobby-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.lobby-code-label {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.lobby-progress {
+  color: #333;
+  font-size: 1.1rem;
+  margin-top: 8px;
+}
+
+.lobby-progress b {
+  color: #4a4a8a;
+  font-size: 1.3rem;
+}
+
+/* スロットグリッド */
+.lobby-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.lobby-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 2px solid #e0e0e0;
+  background: #fafafa;
+  position: relative;
+}
+
+.lobby-slot.filled {
+  background: linear-gradient(135deg, #e8f5e9, #f0fff4);
+  border-color: #66bb6a;
+}
+
+.lobby-slot.empty {
+  background: #f5f5f5;
+  border-style: dashed;
+}
+
+.lobby-slot.me {
+  border-color: #f5576c;
+  background: linear-gradient(135deg, #fff0f4, #ffe8ec);
+  box-shadow: 0 0 0 3px rgba(245, 87, 108, 0.15);
+}
+
+.lobby-slot-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #4a4a8a;
+  color: #fff;
+  font-weight: bold;
+  font-size: 0.85rem;
+}
+
+.lobby-slot.empty .lobby-slot-num {
+  background: #bbb;
+}
+
+.lobby-slot.me .lobby-slot-num {
+  background: #f5576c;
+}
+
+.lobby-slot-name {
+  flex: 1;
+  font-weight: bold;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lobby-slot.empty .lobby-slot-name {
+  color: #aaa;
+  font-weight: normal;
+}
+
+.lobby-slot-me-badge {
+  background: #f5576c;
+  color: #fff;
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+}
+
+/* 自己参加フォーム */
+.lobby-join-form {
+  background: #fff;
+  border: 2px dashed #4a90e2;
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.lobby-join-form h3 {
+  color: #4a4a8a;
+  margin-bottom: 12px;
+  font-size: 1.05rem;
+}
+
+.lobby-join-row {
+  margin-bottom: 12px;
+}
+
+.lobby-join-row input[type="text"] {
+  width: 100%;
+  padding: 12px 14px;
+  border: 2px solid #ddd;
+  border-radius: 10px;
+  font-size: 1rem;
+}
+
+.lobby-join-row input:focus {
+  outline: none;
+  border-color: #4a90e2;
+}
+
+.lobby-role-select {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.lobby-role-select label {
+  flex: 1;
+  min-width: 140px;
+  padding: 10px 14px;
+  border: 2px solid #eee;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.lobby-role-select label:hover {
+  border-color: #4a90e2;
+  background: #f0f4ff;
+}
+
+.lobby-role-select input[type="radio"] {
+  accent-color: #4a90e2;
+}
+
+/* 参加後の自分の情報 */
+.lobby-my-info {
+  background: linear-gradient(135deg, #fff0f4, #ffe8ec);
+  border: 2px solid #f5576c;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.lobby-my-number {
+  font-size: 1.4rem;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.lobby-number-big {
+  font-size: 2.6rem;
+  font-weight: bold;
+  color: #f5576c;
+  display: inline-block;
+  min-width: 60px;
+}
+
+.lobby-role-badge {
+  color: #666;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
+.lobby-wait-msg {
+  color: #777;
+  font-size: 0.9rem;
+  margin: 12px 0;
+}
+
+.btn.btn-small {
+  padding: 6px 14px;
+  font-size: 0.85rem;
+}
+
+/* オーナーの生成ボタン */
+.lobby-owner-actions {
+  text-align: center;
+  padding: 16px;
+  background: #fff9e6;
+  border-radius: 12px;
+  border: 2px solid #fbbf24;
+}
+
+.lobby-owner-actions .btn.primary {
+  font-size: 1.1rem;
+  padding: 14px 32px;
+}
+
+.lobby-owner-actions .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lobby-generate-hint {
+  color: #666;
+  font-size: 0.85rem;
+  margin-top: 10px;
+}
+
+@media (max-width: 600px) {
+  .lobby-slots {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+  .lobby-number-big {
+    font-size: 2.2rem;
+  }
+}
+
 
 /* 共有モーダル */
 .share-modal-overlay {

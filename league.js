@@ -235,6 +235,45 @@ function pushShareState() {
   }
 }
 
+// 共有セッションを開始 (ロビーモード)
+async function startSharedSession() {
+  var input = parseInt(document.getElementById('playerCountInput').value);
+  var errorEl = document.getElementById('step1Error');
+  errorEl.classList.remove('visible'); errorEl.textContent = '';
+  if (isNaN(input) || input < 2) {
+    errorEl.textContent = 'リーグ戦には2人以上必要です。';
+    errorEl.classList.add('visible'); return;
+  }
+  if (input > 16) {
+    errorEl.textContent = '16人以下で入力してください。';
+    errorEl.classList.add('visible'); return;
+  }
+  if (!window.TennisShareUI) {
+    alert('共有機能の読み込みに失敗しています。');
+    return;
+  }
+  await window.TennisShareUI.startLobby({
+    expectedCount: input,
+    courtCount: 0
+  });
+}
+
+// ロビーから受け取った名前で組み合わせを生成
+function generateFromLobbyPlayers(namedPlayers) {
+  players = namedPlayers.slice();
+  playerCount = players.length;
+  matches = [];
+  scores = {};
+  for (var a = 0; a < players.length; a++) {
+    for (var b = a + 1; b < players.length; b++) {
+      matches.push({ player1: a, player2: b });
+    }
+  }
+  renderMatchList();
+  showStep('step3');
+  pushShareState();
+}
+
 (function initShare() {
   if (!window.TennisShareUI) return;
   var container = document.querySelector('.container');
@@ -246,7 +285,10 @@ function pushShareState() {
     mode: 'league',
     getState: getShareState,
     applyState: applyShareState,
-    container: shareContainer
+    container: shareContainer,
+    onGenerate: function (namedPlayers) {
+      generateFromLobbyPlayers(namedPlayers);
+    }
   });
 })(); showStep('step1');
 }

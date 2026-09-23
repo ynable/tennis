@@ -4,7 +4,7 @@
 // =========================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import {
-  getFirestore, doc, setDoc, updateDoc, onSnapshot, getDoc, serverTimestamp
+  getFirestore, doc, setDoc, updateDoc, onSnapshot, getDoc, serverTimestamp, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -91,6 +91,65 @@ function buildShareUrl(code) {
   return url.toString();
 }
 
+/**
+ * ロビーセッションを作成 (プレーヤー名入力前の参加者待ち状態)
+ * @param {'singles'|'doubles'|'league'} mode
+ * @param {{expectedCount:number, courtCount:number, hostName?:string}} params
+ * @returns {Promise<string>} セッションコード
+ */
+async function createLobbySession(mode, params) {
+  const expected = Math.max(2, Math.min(80, params.expectedCount | 0));
+  const players = new Array(expected).fill(null);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = generateCode();
+    const ref = doc(db, "sessions", code);
+    const existing = await getDoc(ref);
+    if (existing.exists()) continue;
+
+    await setDoc(ref, {
+      mode,
+      players,
+      matches: [],
+      scores: {},
+      expectedCount: expected,
+      courtCount: params.courtCount | 0,
+      hostName: params.hostName || "",
+      allowGuestEdit: true,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    return code;
+  }
+  throw new Error("セッションコードの生成に失敗しました。もう一度お試しください。");
+}
+
+/**
+ * ロビーの空きスロットをランダムに確保して名前を入れる。
+ * トランザクションで競合を回避。
+ * @returns {Promise<number>} 割り当てられたスロットindex (0-based)
+ */
+async function claimSlot(code, name) {
+  const ref = doc(db, "sessions", code.toUpperCase());
+  return await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error("セッションが見つかりません");
+    const data = snap.data();
+    if (Array.isArray(data.matches) && data.matches.length > 0) {
+      throw new Error("このセッションは既に開始されています");
+    }
+    const players = (data.players || []).slice();
+    const emptyIndices = [];
+    for (let i = 0; i < players.length; i++) {
+      if (players[i] == null || players[i] === "") emptyIndices.push(i);
+    }
+    if (emptyIndices.length === 0) throw new Error("定員です");
+    const idx = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+    players[idx] = name;
+    tx.update(ref, { players, updatedAt: serverTimestamp() });
+    return idx;
+  });
+}
+
 /** URL クエリからセッションコードを取得 (無ければ null) */
 function getSessionCodeFromUrl() {
   const params = new URLSearchParams(window.location.search);
@@ -125,6 +184,8 @@ function clearOwned(code) {
 
 window.TennisShare = {
   createSession,
+  createLobbySession,
+  claimSlot,
   joinSession,
   updateSession,
   buildShareUrl,
