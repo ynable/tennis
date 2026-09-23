@@ -8,6 +8,11 @@
   box-sizing: border-box;
 }
 
+/* ドロワーのアクティブ色をシングルス用に */
+.drawer-link.active {
+  background: linear-gradient(135deg, #43e97b, #38f9d7) !important;
+}
+
 body {
   font-family: 'Helvetica Neue', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
   background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);

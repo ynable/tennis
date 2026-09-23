@@ -1,0 +1,129 @@
+/* ============================================
+   共通ハンバーガーナビゲーション
+   ============================================ */
+
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  z-index: 500;
+}
+
+.site-logo {
+  font-weight: bold;
+  font-size: 1.05rem;
+  color: #4a4a8a;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+
+.hamburger-btn {
+  width: 40px;
+  height: 40px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hamburger-btn span {
+  display: block;
+  width: 24px;
+  height: 3px;
+  background: #4a4a8a;
+  border-radius: 2px;
+  transition: transform 0.3s, opacity 0.3s;
+}
+
+.hamburger-btn.open span:nth-child(1) {
+  transform: translateY(8px) rotate(45deg);
+}
+.hamburger-btn.open span:nth-child(2) {
+  opacity: 0;
+}
+.hamburger-btn.open span:nth-child(3) {
+  transform: translateY(-8px) rotate(-45deg);
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: -280px;
+  width: 260px;
+  height: 100vh;
+  background: #fff;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+  padding: 72px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: right 0.3s ease;
+  z-index: 600;
+}
+
+.drawer.open {
+  right: 0;
+}
+
+.drawer-link {
+  display: block;
+  padding: 14px 18px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 1rem;
+  color: #444;
+  background: #f6f6fb;
+  transition: background 0.2s, color 0.2s, transform 0.2s;
+}
+
+.drawer-link:hover {
+  background: #eaeaff;
+  color: #4a4a8a;
+  transform: translateX(-2px);
+}
+
+.drawer-link.active {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+}
+
+.drawer-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  z-index: 550;
+}
+
+.drawer-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ヘッダー分の余白を確保 */
+body {
+  padding-top: 76px !important;
+}
+
+@media (max-width: 600px) {
+  .site-logo {
+    font-size: 0.95rem;
+  }
+}

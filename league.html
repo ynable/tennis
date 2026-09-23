@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>テニス リーグ戦</title>
+  <link rel="stylesheet" href="league.css">
+  <link rel="stylesheet" href="nav.css">
+</head>
+<body>
+  <!-- ハンバーガーメニュー -->
+  <header class="site-header">
+    <a href="index.html" class="site-logo">🎾 テニス組み合わせ</a>
+    <button class="hamburger-btn" id="hamburgerBtn" aria-label="メニューを開く">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="drawer" id="drawer">
+    <a href="index.html" class="drawer-link">🏠 ホーム</a>
+    <a href="singles.html" class="drawer-link">🎾 シングルス</a>
+    <a href="doubles.html" class="drawer-link">🎾 ダブルス</a>
+    <a href="league.html" class="drawer-link active">🏆 リーグ戦</a>
+  </nav>
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+
+  <div class="container">
+    <h1>🏆 テニス リーグ戦</h1>
+    <p class="league-lead">総当たり戦で全員と対戦し、順位を決めます。</p>
+
+    <!-- Step 1: 参加人数 -->
+    <section id="step1" class="step active">
+      <h2>Step 1: 参加人数を入力</h2>
+      <div class="court-player-select">
+        <div class="input-row">
+          <label for="playerCountInput">参加人数:</label>
+          <input type="number" id="playerCountInput" min="2" max="16" value="4">
+          <span class="input-hint">人</span>
+        </div>
+        <p id="step1Info" class="info-message"></p>
+        <p id="step1Error" class="error-message"></p>
+      </div>
+      <button class="btn primary" onclick="goToStep2()">次へ</button>
+    </section>
+
+    <!-- Step 2: プレイヤー名 -->
+    <section id="step2" class="step">
+      <h2>Step 2: プレイヤー名を入力</h2>
+      <div id="playerInputs" class="player-inputs"></div>
+      <button class="btn secondary" onclick="goToStep1()">戻る</button>
+      <button class="btn primary" onclick="generateLeague()">リーグ戦を作成！</button>
+    </section>
+
+    <!-- Step 3: 試合一覧 -->
+    <section id="step3" class="step">
+      <h2>🎾 試合一覧</h2>
+      <p class="description">得点を入力すると自動で順位表が更新されます。</p>
+      <div id="matchList" class="match-list"></div>
+      <div id="aggregateArea" class="fixed-bottom-bar">
+        <button class="btn accent" onclick="goToStep4()">📊 順位表を見る</button>
+      </div>
+    </section>
+
+    <!-- Step 4: 順位表 -->
+    <section id="step4" class="step">
+      <h2>📊 順位表</h2>
+      <div id="standingsArea"></div>
+      <div style="text-align:center; margin-top:20px;">
+        <button class="btn secondary" onclick="backToMatches()">試合一覧に戻る</button>
+        <button class="btn primary" onclick="resetApp()">最初からやり直す</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="nav.js"></script>
+  <script src="league.js"></script>
+  <script>
+    document.getElementById('playerCountInput').addEventListener('input', function () {
+      const ppl = parseInt(this.value) || 0;
+      const infoEl = document.getElementById('step1Info');
+      infoEl.classList.remove('visible');
+      infoEl.textContent = '';
+      if (ppl >= 2) {
+        const totalMatches = ppl * (ppl - 1) / 2;
+        infoEl.textContent = `ℹ️ ${ppl}人だと合計 ${totalMatches} 試合の総当たり戦になります。`;
+        infoEl.classList.add('visible');
+      }
+    });
+  </script>
+</body>
+</html>
