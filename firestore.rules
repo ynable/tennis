@@ -13,7 +13,7 @@ service cloud.firestore {
       allow update: if
         // 変更可能なフィールドを制限
         request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['scores', 'players', 'matches', 'updatedAt', 'hostName'])
+          .hasOnly(['scores', 'players', 'matches', 'updatedAt', 'hostName', 'allowGuestEdit'])
         && request.resource.data.scores.size() <= 500;
       allow delete: if false;
 

@@ -79,67 +79,60 @@
   flex-wrap: wrap;
 }
 
-.share-role-btn {
-  background: #fff;
-  color: #4a90e2;
-  border: 2px solid #4a90e2;
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 0.85rem;
+/* ロール表示 (バッジ) */
+.share-role-indicator {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.8rem;
   font-weight: bold;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
+  background: #e8f4ff;
+  color: #1565c0;
+  border: 1px solid #90caf9;
 }
 
-.share-role-btn:hover {
-  background: #f0f4ff;
-}
-
-.share-role-btn.viewer {
+.share-role-indicator.viewer {
   background: #fff5eb;
   color: #d97706;
-  border-color: #d97706;
+  border-color: #fdba74;
 }
 
-.share-role-btn.viewer:hover {
-  background: #ffedd5;
+.share-role-indicator.owner {
+  background: #fff9e6;
+  color: #b45309;
+  border-color: #fbbf24;
 }
 
-/* 参加モーダルのロール選択 */
-.join-role-select {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
+/* 共有モーダルの権限セクション */
+.share-permission-section {
+  background: #f4f6ff;
+  border: 2px solid #d0d8f5;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
   text-align: left;
 }
 
-.join-role-select label {
+.share-permission-label {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border: 2px solid #eee;
-  border-radius: 8px;
+  align-items: flex-start;
+  gap: 10px;
   cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
 }
 
-.join-role-select label:hover {
-  border-color: #4a90e2;
-  background: #f0f4ff;
-}
-
-.join-role-select input[type="radio"]:checked + span,
-.join-role-select label:has(input:checked) {
-  border-color: #4a90e2;
-  background: #f0f4ff;
-}
-
-.join-role-select input[type="radio"] {
+.share-permission-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
   accent-color: #4a90e2;
+  flex-shrink: 0;
+}
+
+.share-permission-label small {
+  color: #777;
+  font-weight: normal;
 }
 
 /* 閲覧モード時: スコア入力とアクション操作をロック */

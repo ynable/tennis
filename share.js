@@ -48,6 +48,7 @@ async function createSession(mode, state) {
       matches: state.matches || [],
       scores: state.scores || {},
       hostName: state.hostName || "",
+      allowGuestEdit: false,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });

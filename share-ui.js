@@ -10,23 +10,35 @@
     getState: null,
     applyState: null,
     isApplyingRemote: false,
-    role: "editor",         // 'editor' | 'viewer'
-    lastSyncedKey: null,    // 直近同期した state のフィンガープリント (自分の echo を弾く用)
+    isOwner: false,            // セッション作成者か
+    allowGuestEdit: false,     // 参加者に編集を許可するか (オーナー設定)
+    role: "viewer",            // 有効ロール ('editor' | 'viewer') - 派生値
+    lastSyncedKey: null,
     pushTimer: null
   };
+
+  // ---- キー順に依存しない JSON 文字列化 (echo 判定用) ----
+  function stableStringify(v) {
+    if (v === null || typeof v !== "object") return JSON.stringify(v);
+    if (Array.isArray(v)) return "[" + v.map(stableStringify).join(",") + "]";
+    var keys = Object.keys(v).sort();
+    return "{" + keys.map(function (k) {
+      return JSON.stringify(k) + ":" + stableStringify(v[k]);
+    }).join(",") + "}";
+  }
+
+  function computeKey(s) {
+    return stableStringify({
+      players: s.players || [],
+      matches: s.matches || [],
+      scores: s.scores || {}
+    });
+  }
 
   function whenReady() {
     if (window.TennisShare) return Promise.resolve();
     return new Promise(function (res) {
       window.addEventListener("tennisShareReady", res, { once: true });
-    });
-  }
-
-  function computeKey(s) {
-    return JSON.stringify({
-      players: s.players || [],
-      matches: s.matches || [],
-      scores: s.scores || {}
     });
   }
 
@@ -38,14 +50,11 @@
     renderShareBar(opts.container);
     await whenReady();
 
-    // URL に ?s=CODE があれば自動 join
     var codeFromUrl = window.TennisShare.getSessionCodeFromUrl();
     if (codeFromUrl) {
       state.sessionCode = codeFromUrl;
-      // URL の ?role=editor/viewer を尊重、無ければデフォルト viewer
-      var roleFromUrl = new URLSearchParams(window.location.search).get("role");
-      var initialRole = (roleFromUrl === "editor") ? "editor" : "viewer";
-      setRole(initialRole);
+      state.isOwner = false;
+      applyEffectiveRole();
       updateBarUI();
       startSubscription(codeFromUrl);
       if (opts.onAutoJoin) opts.onAutoJoin();
@@ -64,7 +73,7 @@
         '<span id="shareBarLabel">共有はオフです</span>' +
       "</div>" +
       '<div class="share-bar-controls">' +
-        '<button class="share-role-btn" id="shareRoleBtn" style="display:none">🖊️ 編集モード</button>' +
+        '<span class="share-role-indicator" id="shareRoleIndicator" style="display:none"></span>' +
         '<button class="share-btn secondary" id="shareJoinBtn">参加</button>' +
         '<button class="share-btn" id="shareCreateBtn">セッションを作成</button>' +
       "</div>";
@@ -72,7 +81,6 @@
 
     document.getElementById("shareCreateBtn").addEventListener("click", handleCreateClick);
     document.getElementById("shareJoinBtn").addEventListener("click", openJoinModal);
-    document.getElementById("shareRoleBtn").addEventListener("click", toggleRole);
   }
 
   async function handleCreateClick() {
@@ -88,8 +96,10 @@
     try {
       var code = await window.TennisShare.createSession(state.mode, st);
       state.sessionCode = code;
+      state.isOwner = true;
+      state.allowGuestEdit = false; // デフォルト: 参加者は閲覧のみ
       state.lastSyncedKey = computeKey(st);
-      setRole("editor");
+      applyEffectiveRole();
       updateBarUI();
       startSubscription(code);
       openShareModal(code);
@@ -105,6 +115,16 @@
         showToast("セッションが見つかりません: " + code);
         return;
       }
+
+      // allowGuestEdit を反映 (参加者側は役割が変わる)
+      var newAllow = !!remote.allowGuestEdit;
+      var allowChanged = newAllow !== state.allowGuestEdit;
+      state.allowGuestEdit = newAllow;
+      if (allowChanged || state.role !== computeEffectiveRoleValue()) {
+        applyEffectiveRole();
+        syncShareModalPermission();
+      }
+
       var key = computeKey(remote);
       // 自分の書き込みの echo なら再描画をスキップ (フォーカス保護)
       if (key === state.lastSyncedKey) return;
@@ -121,7 +141,6 @@
   function pushState() {
     if (!state.sessionCode || state.isApplyingRemote) return;
     if (state.role === "viewer") return;
-    // 短時間の連続入力をまとめる (Firestore 書き込みコスト削減 & echo を抑制)
     clearTimeout(state.pushTimer);
     state.pushTimer = setTimeout(async function () {
       var st = state.getState();
@@ -140,39 +159,56 @@
     }, 300);
   }
 
-  function setRole(role) {
-    state.role = role;
-    document.body.classList.toggle("view-only", role === "viewer");
+  // ---- ロール計算 ----
+  function computeEffectiveRoleValue() {
+    if (!state.sessionCode) return "editor"; // 未接続時はローカル編集を許可
+    if (state.isOwner) return "editor";
+    return state.allowGuestEdit ? "editor" : "viewer";
+  }
+
+  function applyEffectiveRole() {
+    var next = computeEffectiveRoleValue();
+    state.role = next;
+    document.body.classList.toggle("view-only", next === "viewer");
     updateBarUI();
   }
 
-  function toggleRole() {
-    setRole(state.role === "editor" ? "viewer" : "editor");
-    showToast(state.role === "editor" ? "🖊️ 編集モードに切り替えました" : "👀 閲覧モードに切り替えました");
+  async function setAllowGuestEditByOwner(value) {
+    if (!state.isOwner || !state.sessionCode) return;
+    state.allowGuestEdit = value;
+    applyEffectiveRole();
+    try {
+      await window.TennisShare.updateSession(state.sessionCode, { allowGuestEdit: value });
+    } catch (e) {
+      console.error("[TennisShareUI] setAllowGuestEdit failed", e);
+      showToast("権限設定の変更に失敗しました");
+    }
   }
 
   function updateBarUI() {
     var bar = document.getElementById("shareBar");
     if (!bar) return;
-    var roleBtn = document.getElementById("shareRoleBtn");
+    var indicator = document.getElementById("shareRoleIndicator");
     var joinBtn = document.getElementById("shareJoinBtn");
     var createBtn = document.getElementById("shareCreateBtn");
 
     if (state.sessionCode) {
       bar.classList.add("connected");
-      document.getElementById("shareBarLabel").innerHTML =
-        '同期中 <span class="share-bar-code">' + state.sessionCode + "</span>";
+      var codeHtml = '<span class="share-bar-code">' + state.sessionCode + "</span>";
+      var roleLabel = state.isOwner ? "オーナー" : (state.role === "editor" ? "編集可" : "閲覧のみ");
+      document.getElementById("shareBarLabel").innerHTML = "同期中 " + codeHtml;
       createBtn.textContent = "共有情報を表示";
       joinBtn.style.display = "none";
-      roleBtn.style.display = "";
-      roleBtn.textContent = state.role === "editor" ? "🖊️ 編集モード" : "👀 閲覧モード";
-      roleBtn.classList.toggle("viewer", state.role === "viewer");
+      indicator.style.display = "";
+      indicator.textContent = (state.isOwner ? "👑 " : (state.role === "editor" ? "🖊️ " : "👀 ")) + roleLabel;
+      indicator.classList.toggle("viewer", state.role === "viewer");
+      indicator.classList.toggle("owner", state.isOwner);
     } else {
       bar.classList.remove("connected");
       document.getElementById("shareBarLabel").textContent = "共有はオフです";
       createBtn.textContent = "セッションを作成";
       joinBtn.style.display = "";
-      roleBtn.style.display = "none";
+      indicator.style.display = "none";
     }
   }
 
@@ -181,7 +217,20 @@
     var modal = document.getElementById("shareModalOverlay") || createShareModal();
     document.getElementById("shareCodeDisplay").textContent = code;
     document.getElementById("shareUrlInput").value = url;
+    syncShareModalPermission();
     modal.classList.add("show");
+  }
+
+  function syncShareModalPermission() {
+    var wrap = document.getElementById("sharePermissionSection");
+    if (!wrap) return;
+    if (state.isOwner) {
+      wrap.style.display = "";
+      var cb = document.getElementById("sharePermissionCheckbox");
+      if (cb) cb.checked = state.allowGuestEdit;
+    } else {
+      wrap.style.display = "none";
+    }
   }
 
   function createShareModal() {
@@ -191,17 +240,27 @@
     overlay.innerHTML =
       '<div class="share-modal">' +
         "<h3>🔗 セッションを共有</h3>" +
-        '<p class="share-desc">下のコードまたは URL を共有すると、他の人が同じ画面をリアルタイムで見られます。<br>参加者は初期状態が<b>閲覧モード</b>で、共有バーの「閲覧モード」ボタンから編集モードに切り替えられます。</p>' +
+        '<p class="share-desc">下のコードまたは URL を共有すると、他の人が同じ画面をリアルタイムで見られます。</p>' +
         '<div class="share-code-display" id="shareCodeDisplay"></div>' +
         '<div class="share-url-row">' +
           '<input type="text" id="shareUrlInput" readonly>' +
           '<button id="shareCopyBtn">コピー</button>' +
+        "</div>" +
+        '<div class="share-permission-section" id="sharePermissionSection">' +
+          '<label class="share-permission-label">' +
+            '<input type="checkbox" id="sharePermissionCheckbox">' +
+            '<span><b>参加者にも得点入力を許可する</b><br><small>オフの間、参加者は閲覧のみになります。</small></span>' +
+          "</label>" +
         "</div>" +
         '<div class="share-modal-actions">' +
           '<button class="close-btn" id="shareCloseBtn">閉じる</button>' +
         "</div>" +
       "</div>";
     document.body.appendChild(overlay);
+
+    document.getElementById("sharePermissionCheckbox").addEventListener("change", function (e) {
+      setAllowGuestEditByOwner(e.target.checked);
+    });
 
     document.getElementById("shareCopyBtn").addEventListener("click", function () {
       var input = document.getElementById("shareUrlInput");
@@ -210,12 +269,10 @@
       var done = function () { showToast("URL をコピーしました"); };
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(done, function () {
-          document.execCommand("copy");
-          done();
+          document.execCommand("copy"); done();
         });
       } else {
-        document.execCommand("copy");
-        done();
+        document.execCommand("copy"); done();
       }
     });
     document.getElementById("shareCloseBtn").addEventListener("click", function () {
@@ -242,12 +299,9 @@
     overlay.innerHTML =
       '<div class="join-modal">' +
         "<h3>セッションに参加</h3>" +
+        '<p class="share-desc">参加後の得点入力の可否はオーナーの設定に従います。</p>' +
         '<input type="text" id="joinCodeInput" maxlength="6" placeholder="ABC123" autocomplete="off">' +
         '<p class="error" id="joinError"></p>' +
-        '<div class="join-role-select">' +
-          '<label><input type="radio" name="joinRole" value="viewer" checked> 👀 閲覧のみ</label>' +
-          '<label><input type="radio" name="joinRole" value="editor"> 🖊️ 得点入力あり</label>' +
-        "</div>" +
         '<div class="share-modal-actions">' +
           '<button class="close-btn" id="joinCloseBtn">キャンセル</button>' +
           '<button class="share-btn" id="joinSubmitBtn">参加</button>' +
@@ -261,11 +315,9 @@
         document.getElementById("joinError").textContent = "6桁のコードを入力してください。";
         return;
       }
-      var role = (document.querySelector('input[name="joinRole"]:checked') || {}).value || "viewer";
       overlay.classList.remove("show");
       var url = new URL(window.location.href);
       url.searchParams.set("s", code);
-      url.searchParams.set("role", role);
       window.location.href = url.toString();
     };
     document.getElementById("joinSubmitBtn").addEventListener("click", submit);
@@ -300,6 +352,6 @@
     isRemote: function () { return state.isApplyingRemote; },
     isActive: function () { return !!state.sessionCode; },
     isViewer: function () { return state.role === "viewer"; },
-    setRole: setRole
+    isOwner: function () { return state.isOwner; }
   };
 })();
