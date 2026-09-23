@@ -98,12 +98,40 @@ function getSessionCodeFromUrl() {
   return code ? code.toUpperCase() : null;
 }
 
+// -------- オーナー識別 (localStorage) --------
+function ownerKey(code) { return "tennis:owner:" + code.toUpperCase(); }
+
+/** 自分がオーナーとして作成したセッションを記録 */
+function markOwned(code, mode) {
+  try {
+    localStorage.setItem(ownerKey(code), JSON.stringify({
+      mode: mode,
+      at: new Date().toISOString()
+    }));
+  } catch (e) { /* ignore */ }
+}
+
+/** 指定のコードが自分がオーナーとして作ったものか */
+function isOwned(code) {
+  try {
+    return !!localStorage.getItem(ownerKey(code));
+  } catch (e) { return false; }
+}
+
+/** オーナー記録を削除 */
+function clearOwned(code) {
+  try { localStorage.removeItem(ownerKey(code)); } catch (e) { /* ignore */ }
+}
+
 window.TennisShare = {
   createSession,
   joinSession,
   updateSession,
   buildShareUrl,
-  getSessionCodeFromUrl
+  getSessionCodeFromUrl,
+  markOwned,
+  isOwned,
+  clearOwned
 };
 
 // share.js の読み込み完了を通知

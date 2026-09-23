@@ -53,7 +53,8 @@
     var codeFromUrl = window.TennisShare.getSessionCodeFromUrl();
     if (codeFromUrl) {
       state.sessionCode = codeFromUrl;
-      state.isOwner = false;
+      // localStorage に自分のオーナーマークがあればオーナーとして復帰
+      state.isOwner = window.TennisShare.isOwned(codeFromUrl);
       applyEffectiveRole();
       updateBarUI();
       startSubscription(codeFromUrl);
@@ -99,6 +100,8 @@
       state.isOwner = true;
       state.allowGuestEdit = false; // デフォルト: 参加者は閲覧のみ
       state.lastSyncedKey = computeKey(st);
+      window.TennisShare.markOwned(code, state.mode);
+      updateUrlWithCode(code);
       applyEffectiveRole();
       updateBarUI();
       startSubscription(code);
@@ -108,11 +111,39 @@
     }
   }
 
+  function updateUrlWithCode(code) {
+    try {
+      var url = new URL(window.location.href);
+      url.searchParams.set("s", code);
+      window.history.replaceState({}, "", url.toString());
+    } catch (e) { /* ignore */ }
+  }
+
+  function resetToInitialState() {
+    if (state.unsubscribe) { state.unsubscribe(); state.unsubscribe = null; }
+    state.sessionCode = null;
+    state.isOwner = false;
+    state.allowGuestEdit = false;
+    state.lastSyncedKey = null;
+    document.body.classList.remove("view-only");
+    applyEffectiveRole();
+    updateBarUI();
+    // URL から ?s= を除去
+    try {
+      var url = new URL(window.location.href);
+      url.searchParams.delete("s");
+      window.history.replaceState({}, "", url.toString());
+    } catch (e) { /* ignore */ }
+  }
+
   function startSubscription(code) {
     if (state.unsubscribe) state.unsubscribe();
     state.unsubscribe = window.TennisShare.joinSession(code, function (remote) {
       if (!remote) {
+        // セッションが存在しない/削除された → クリーンアップ
         showToast("セッションが見つかりません: " + code);
+        if (state.isOwner) window.TennisShare.clearOwned(code);
+        resetToInitialState();
         return;
       }
 
