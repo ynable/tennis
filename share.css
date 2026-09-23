@@ -71,6 +71,106 @@
   border: 2px solid #4a90e2;
 }
 
+/* ロール切替ボタン */
+.share-bar-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.share-role-btn {
+  background: #fff;
+  color: #4a90e2;
+  border: 2px solid #4a90e2;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.share-role-btn:hover {
+  background: #f0f4ff;
+}
+
+.share-role-btn.viewer {
+  background: #fff5eb;
+  color: #d97706;
+  border-color: #d97706;
+}
+
+.share-role-btn.viewer:hover {
+  background: #ffedd5;
+}
+
+/* 参加モーダルのロール選択 */
+.join-role-select {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.join-role-select label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 2px solid #eee;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.95rem;
+}
+
+.join-role-select label:hover {
+  border-color: #4a90e2;
+  background: #f0f4ff;
+}
+
+.join-role-select input[type="radio"]:checked + span,
+.join-role-select label:has(input:checked) {
+  border-color: #4a90e2;
+  background: #f0f4ff;
+}
+
+.join-role-select input[type="radio"] {
+  accent-color: #4a90e2;
+}
+
+/* 閲覧モード時: スコア入力とアクション操作をロック */
+body.view-only .match-card input[type="number"],
+body.view-only .score-area input,
+body.view-only #matchList input[type="number"] {
+  pointer-events: none;
+  background: #f0f0f0 !important;
+  color: #888 !important;
+  border-color: #ddd !important;
+  cursor: not-allowed;
+}
+
+body.view-only .member-change-area,
+body.view-only #aggregateArea .btn,
+body.view-only .step .btn.primary,
+body.view-only .step .btn.accent {
+  /* 集計を見る・戻る・リセット等の全ボタンを無効化しないよう限定的に */
+}
+
+/* 「セッションを作成」「メンバー変更」など、状態を書き換えるボタンだけ view-only で抑止 */
+body.view-only .member-change-btn {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+body.view-only .view-only-badge {
+  display: inline-block;
+}
+
+
 /* 共有モーダル */
 .share-modal-overlay {
   position: fixed;
