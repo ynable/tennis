@@ -21,7 +21,9 @@
     courtCount: 0,
     remotePlayers: [],
     mySlot: null,               // {index, name} - role は廃止 (allowGuestEdit で一元管理)
-    lobbyVisible: false
+    lobbyVisible: false,
+    claimInProgress: false,     // 連続クリック/エンター防止ロック
+    deleteInProgress: false
   };
 
   var gachaSpinInterval = null;
@@ -343,12 +345,23 @@
       var isMe = state.mySlot && state.mySlot.index === i;
       var div = document.createElement("div");
       div.className = "lobby-slot" + (isEmpty ? " empty" : " filled") + (isMe ? " me" : "");
-      div.innerHTML =
+      var html =
         '<span class="lobby-slot-num">' + (i + 1) + '</span>' +
         '<span class="lobby-slot-name">' + (isEmpty ? "—" : escapeHtml(p)) + '</span>' +
         (isMe ? '<span class="lobby-slot-me-badge">YOU</span>' : "");
+      if (state.isOwner && !isEmpty) {
+        html += '<button class="lobby-slot-delete" title="削除" data-idx="' + i + '">×</button>';
+      }
+      div.innerHTML = html;
       slotsEl.appendChild(div);
     }
+    // 削除ボタンのイベント委譲
+    slotsEl.onclick = function (e) {
+      if (e.target.classList && e.target.classList.contains("lobby-slot-delete")) {
+        var idx = parseInt(e.target.dataset.idx, 10);
+        if (!isNaN(idx)) handleOwnerDelete(idx);
+      }
+    };
 
     // 自己参加フォーム / 参加後の表示
     var joinForm = document.getElementById("lobbyJoinForm");
@@ -388,67 +401,104 @@
   // =========================================================
   // 参加ハンドラー
   // =========================================================
-  async function claimWithGacha(name, onSuccess, onError) {
+  async function claimWithGachaAnimation(name) {
+    // ガチャ演出付きでスロット確保。成功した idx を返す。
     showGachaModal(name, state.expectedCount);
     var startTime = Date.now();
+    var idx;
     try {
-      var idx = await window.TennisShare.claimSlot(state.sessionCode, name);
-      var minDur = 1600;
-      var elapsed = Date.now() - startTime;
-      if (elapsed < minDur) {
-        await new Promise(function (r) { setTimeout(r, minDur - elapsed); });
-      }
-      revealGachaNumber(idx + 1, name);
-      setTimeout(function () {
-        closeGachaModal();
-        if (onSuccess) onSuccess(idx);
-        updateLobbyContent();
-      }, 2400);
+      idx = await window.TennisShare.claimSlot(state.sessionCode, name);
     } catch (e) {
       closeGachaModal();
-      showToast("失敗: " + (e.message || e));
-      if (onError) onError(e);
+      throw e;
     }
+    var minDur = 1600;
+    var elapsed = Date.now() - startTime;
+    if (elapsed < minDur) {
+      await new Promise(function (r) { setTimeout(r, minDur - elapsed); });
+    }
+    revealGachaNumber(idx + 1, name);
+    await new Promise(function (r) { setTimeout(r, 2400); });
+    closeGachaModal();
+    return idx;
   }
 
   async function handleSelfJoin() {
+    if (state.claimInProgress) return;
     var nameInput = document.getElementById("lobbyJoinName");
     var name = nameInput.value.trim();
     if (!name) { showToast("名前を入力してください"); nameInput.focus(); return; }
+    state.claimInProgress = true;
     var btn = document.getElementById("lobbyJoinBtn");
     btn.disabled = true;
+    nameInput.disabled = true;
     var origText = btn.textContent;
     btn.textContent = "抽選中...";
-    await claimWithGacha(name,
-      function (idx) {
-        state.mySlot = { index: idx, name: name };
-        saveMySlot(state.sessionCode, state.mySlot);
-        applyEffectiveRole();
-        nameInput.value = "";
-      },
-      function () {
-        btn.disabled = false;
-        btn.textContent = origText;
-      });
-    btn.disabled = false;
-    btn.textContent = origText;
+    try {
+      var idx = await claimWithGachaAnimation(name);
+      state.mySlot = { index: idx, name: name };
+      saveMySlot(state.sessionCode, state.mySlot);
+      applyEffectiveRole();
+      nameInput.value = "";
+      updateLobbyContent();
+    } catch (e) {
+      showToast("参加に失敗: " + (e.message || e));
+    } finally {
+      state.claimInProgress = false;
+      btn.disabled = false;
+      nameInput.disabled = false;
+      btn.textContent = origText;
+    }
   }
 
   async function handleOwnerAddManual() {
+    if (state.claimInProgress) return;
     var nameInput = document.getElementById("ownerAddName");
     var name = nameInput.value.trim();
     if (!name) { showToast("名前を入力してください"); nameInput.focus(); return; }
+    state.claimInProgress = true;
     var btn = document.getElementById("ownerAddBtn");
     btn.disabled = true;
+    nameInput.disabled = true;
     var origText = btn.textContent;
     btn.textContent = "抽選中...";
-    await claimWithGacha(name,
-      function () {
-        nameInput.value = "";
-        setTimeout(function () { nameInput.focus(); }, 100);
-      });
-    btn.disabled = false;
-    btn.textContent = origText;
+    try {
+      await claimWithGachaAnimation(name);
+      nameInput.value = "";
+      updateLobbyContent();
+      setTimeout(function () { if (!nameInput.disabled) nameInput.focus(); }, 100);
+    } catch (e) {
+      showToast("追加に失敗: " + (e.message || e));
+    } finally {
+      state.claimInProgress = false;
+      btn.disabled = false;
+      nameInput.disabled = false;
+      btn.textContent = origText;
+    }
+  }
+
+  async function handleOwnerDelete(idx) {
+    if (state.deleteInProgress) return;
+    var name = state.remotePlayers[idx];
+    if (!name) return;
+    if (!confirm("「" + name + "」を削除しますか？")) return;
+    state.deleteInProgress = true;
+    try {
+      var players = state.remotePlayers.slice();
+      players[idx] = null;
+      await window.TennisShare.updateSession(state.sessionCode, { players: players });
+      // 自分のスロットを削除した場合 localStorage もクリーン
+      if (state.mySlot && state.mySlot.index === idx) {
+        clearMySlot(state.sessionCode);
+        state.mySlot = null;
+        applyEffectiveRole();
+      }
+      showToast(name + " を削除しました");
+    } catch (e) {
+      showToast("削除に失敗: " + (e.message || e));
+    } finally {
+      state.deleteInProgress = false;
+    }
   }
 
   async function handleLeaveSlot() {

@@ -299,6 +299,32 @@ body.view-only .view-only-badge {
   letter-spacing: 0.05em;
 }
 
+/* 削除ボタン (オーナー用) */
+.lobby-slot-delete {
+  border: none;
+  background: rgba(211, 47, 47, 0.12);
+  color: #d32f2f;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.lobby-slot-delete:hover {
+  background: #d32f2f;
+  color: #fff;
+  transform: scale(1.1);
+}
+
 /* 自己参加フォーム */
 .lobby-join-form {
   background: #fff;
