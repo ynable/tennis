@@ -96,8 +96,10 @@ function renderPlayerInputs() {
     group.className = 'player-input-group';
     var g = genders[i] || '';
     group.innerHTML =
-      '<span class="player-number">' + (i + 1) + '</span>' +
-      '<input type="text" id="player-' + i + '" placeholder="プレイヤー' + (i + 1) + 'の名前">' +
+      '<div class="player-row-top">' +
+        '<span class="player-number">' + (i + 1) + '</span>' +
+        '<input type="text" id="player-' + i + '" placeholder="プレイヤー' + (i + 1) + 'の名前">' +
+      '</div>' +
       '<input type="hidden" id="gender-' + i + '" value="' + g + '">' +
       '<div class="gender-toggle">' +
         '<button type="button" class="gender-btn male' + (g === 'male' ? ' active' : '') + '" data-g="male" onclick="setPlayerGender(' + i + ', \'male\')">♂</button>' +

@@ -158,6 +158,13 @@ h2 {
 
 .player-input-group {
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.player-row-top {
+  display: flex;
   align-items: center;
   gap: 8px;
 }
@@ -236,6 +243,8 @@ h2 {
 .player-input-group .gender-toggle {
   display: inline-flex;
   flex-shrink: 0;
+  align-self: flex-start;
+  margin-left: 40px;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid #ddd;
