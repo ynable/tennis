@@ -6,10 +6,19 @@
 let courtCount = 2;
 let playerCount = 8;
 let players = [];
+let genders = [];
+let mixedDoubles = false;
 let activePlayers = [];
 let matches = [];
 let scores = {};
 const TOTAL_MATCHES = 30;
+
+function genderBadge(idx) {
+  var g = genders[idx];
+  if (g === 'male') return '<span class="gender-badge male" title="男性">♂</span>';
+  if (g === 'female') return '<span class="gender-badge female" title="女性">♀</span>';
+  return '';
+}
 
 let memberChangeRound = -1;
 let pendingActive = [];
@@ -65,10 +74,13 @@ function goToStep2FromStep3() { showStep('step2'); }
 
 function goToStep3() {
   players = [];
+  genders = [];
   for (let i = 0; i < playerCount; i++) {
     const input = document.getElementById('player-' + i);
     const name = input.value.trim() || ('プレイヤー' + (i + 1));
     players.push(name);
+    const gEl = document.getElementById('gender-' + i);
+    genders.push(gEl ? gEl.value : '');
   }
   activePlayers = Array.from({ length: playerCount }, function(_, i) { return i; });
   showStep('step3');
@@ -80,8 +92,31 @@ function renderPlayerInputs() {
   for (let i = 0; i < playerCount; i++) {
     const group = document.createElement('div');
     group.className = 'player-input-group';
-    group.innerHTML = '<span class="player-number">' + (i + 1) + '</span><input type="text" id="player-' + i + '" placeholder="プレイヤー' + (i + 1) + 'の名前">';
+    const g = genders[i] || '';
+    group.innerHTML =
+      '<span class="player-number">' + (i + 1) + '</span>' +
+      '<input type="text" id="player-' + i + '" placeholder="プレイヤー' + (i + 1) + 'の名前">' +
+      '<input type="hidden" id="gender-' + i + '" value="' + g + '">' +
+      '<div class="gender-toggle">' +
+        '<button type="button" class="gender-btn male' + (g === 'male' ? ' active' : '') + '" data-g="male" onclick="setPlayerGender(' + i + ', \'male\')">♂</button>' +
+        '<button type="button" class="gender-btn female' + (g === 'female' ? ' active' : '') + '" data-g="female" onclick="setPlayerGender(' + i + ', \'female\')">♀</button>' +
+      '</div>';
     container.appendChild(group);
+  }
+}
+
+function setPlayerGender(idx, g) {
+  const hidden = document.getElementById('gender-' + idx);
+  if (!hidden) return;
+  const newVal = hidden.value === g ? '' : g;
+  hidden.value = newVal;
+  genders[idx] = newVal;
+  const group = hidden.closest('.player-input-group');
+  if (group) {
+    const btns = group.querySelectorAll('.gender-btn');
+    for (let b = 0; b < btns.length; b++) {
+      btns[b].classList.toggle('active', btns[b].dataset.g === newVal);
+    }
   }
 }
 
@@ -91,12 +126,12 @@ function applyBulkPlayerNames() {
   if (!bulkInput || !errorEl) return;
 
   const names = bulkInput.value
-    .split(/\s+/)
+    .split(/[\s,、。.]+/)
     .map(name => name.trim())
     .filter(name => name.length > 0);
 
   if (names.length === 0) {
-    errorEl.textContent = '名前を空白区切りで入力してください。';
+    errorEl.textContent = '名前を , 、 。 . のいずれかで区切って入力してください。';
     errorEl.classList.add('visible');
     return;
   }
@@ -120,6 +155,18 @@ function applyBulkPlayerNames() {
 
 function generateMatches() {
   const firstMatchType = document.querySelector('input[name="firstMatch"]:checked').value;
+  const mixedEl = document.getElementById('mixedDoublesCheck');
+  mixedDoubles = !!(mixedEl && mixedEl.checked);
+  const step3Error = document.getElementById('step3Error');
+  if (step3Error) { step3Error.classList.remove('visible'); step3Error.textContent = ''; }
+  if (mixedDoubles) {
+    const err = validateMixedDoubles();
+    if (err) {
+      if (step3Error) { step3Error.textContent = err; step3Error.classList.add('visible'); }
+      else alert(err);
+      return;
+    }
+  }
   matches = [];
   scores = {};
   generateRoundsFrom(0, firstMatchType);
@@ -128,7 +175,21 @@ function generateMatches() {
   pushShareState();
 }
 
+function validateMixedDoubles() {
+  var maleCount = 0, femaleCount = 0, unset = 0;
+  for (var k = 0; k < activePlayers.length; k++) {
+    var g = genders[activePlayers[k]];
+    if (g === 'male') maleCount++;
+    else if (g === 'female') femaleCount++;
+    else unset++;
+  }
+  if (unset > 0) return 'ミックスダブルスでは全員の性別を設定してください。(未設定: ' + unset + '人)';
+  if (maleCount < 2 || femaleCount < 2) return 'ミックスダブルスには男性2人以上・女性2人以上が必要です。(現在 男' + maleCount + ' / 女' + femaleCount + ')';
+  return null;
+}
+
 function generateRoundsFrom(fromRound, firstMatchType) {
+  if (mixedDoubles) { generateMixedRoundsFrom(fromRound); return; }
   var totalPlayers = players.length;
   var currentActive = activePlayers.slice();
   if (currentActive.length < 4) return;
@@ -329,6 +390,101 @@ function assignTeams(roundPlayers, courts, pairCount, oppCount) {
   return bestMatchups;
 }
 
+// ========================= ミックスダブルス =========================
+function generateMixedRoundsFrom(fromRound) {
+  var totalPlayers = players.length;
+  var currentActive = activePlayers.slice();
+  var males = currentActive.filter(function(i){ return genders[i] === 'male'; });
+  var females = currentActive.filter(function(i){ return genders[i] === 'female'; });
+  var activeCourts = Math.min(courtCount, Math.floor(males.length / 2), Math.floor(females.length / 2));
+  if (activeCourts < 1) return;
+
+  var pairCount = [], oppCount = [], lastPlayedRound = [], playCountArr = [];
+  var i, j;
+  for (i = 0; i < totalPlayers; i++) {
+    pairCount[i] = []; oppCount[i] = [];
+    for (j = 0; j < totalPlayers; j++) { pairCount[i][j] = 0; oppCount[i][j] = 0; }
+    lastPlayedRound[i] = -2; playCountArr[i] = 0;
+  }
+
+  if (fromRound > 0 && matches.length > 0) {
+    for (i = 0; i < matches.length; i++) {
+      var m = matches[i];
+      var r0 = m.round - 1;
+      pairCount[m.team1[0]][m.team1[1]]++; pairCount[m.team1[1]][m.team1[0]]++;
+      pairCount[m.team2[0]][m.team2[1]]++; pairCount[m.team2[1]][m.team2[0]]++;
+      var t1 = m.team1, t2 = m.team2;
+      for (var a = 0; a < t1.length; a++) {
+        for (var b = 0; b < t2.length; b++) {
+          oppCount[t1[a]][t2[b]]++; oppCount[t2[b]][t1[a]]++;
+        }
+      }
+      var all = t1.concat(t2);
+      for (var k = 0; k < all.length; k++) { lastPlayedRound[all[k]] = r0; playCountArr[all[k]]++; }
+    }
+  }
+
+  var matchIndex = matches.length;
+  var matchesPerRound = activeCourts;
+  var totalRounds = Math.ceil(TOTAL_MATCHES / matchesPerRound);
+  var needM = activeCourts * 2, needF = activeCourts * 2;
+
+  for (var round = fromRound; round < totalRounds; round++) {
+    var roundNumber = round + 1;
+    var roundMales = selectFromPool(males, needM, lastPlayedRound, round, playCountArr);
+    var roundFemales = selectFromPool(females, needF, lastPlayedRound, round, playCountArr);
+    var roundMatchups = assignMixedTeams(roundMales, roundFemales, activeCourts, pairCount, oppCount);
+
+    for (var mi = 0; mi < roundMatchups.length; mi++) {
+      if (matchIndex >= TOTAL_MATCHES) break;
+      var matchup = roundMatchups[mi];
+      matches.push({ round: roundNumber, court: mi + 1, team1: matchup.team1, team2: matchup.team2 });
+      pairCount[matchup.team1[0]][matchup.team1[1]]++; pairCount[matchup.team1[1]][matchup.team1[0]]++;
+      pairCount[matchup.team2[0]][matchup.team2[1]]++; pairCount[matchup.team2[1]][matchup.team2[0]]++;
+      for (var a2 = 0; a2 < matchup.team1.length; a2++) {
+        for (var b2 = 0; b2 < matchup.team2.length; b2++) {
+          oppCount[matchup.team1[a2]][matchup.team2[b2]]++; oppCount[matchup.team2[b2]][matchup.team1[a2]]++;
+        }
+      }
+      var allM = matchup.team1.concat(matchup.team2);
+      for (var k2 = 0; k2 < allM.length; k2++) { lastPlayedRound[allM[k2]] = round; playCountArr[allM[k2]]++; }
+      matchIndex++;
+    }
+    if (matchIndex >= TOTAL_MATCHES) break;
+  }
+}
+
+function selectFromPool(pool, need, lastPlayedRound, currentRound, playCountArr) {
+  if (pool.length <= need) return pool.slice();
+  var arr = pool.slice();
+  shuffleArray(arr);
+  arr.sort(function(a, b) {
+    var ra = currentRound - 1 - lastPlayedRound[a]; if (ra < 0) ra = 0;
+    var rb = currentRound - 1 - lastPlayedRound[b]; if (rb < 0) rb = 0;
+    if (rb !== ra) return rb - ra;
+    return playCountArr[a] - playCountArr[b];
+  });
+  return arr.slice(0, need);
+}
+
+function assignMixedTeams(roundMales, roundFemales, courts, pairCount, oppCount) {
+  var best = null, bestScore = Infinity;
+  for (var attempt = 0; attempt < 80; attempt++) {
+    var ms = roundMales.slice(); shuffleArray(ms);
+    var fs = roundFemales.slice(); shuffleArray(fs);
+    var matchups = []; var total = 0;
+    for (var c = 0; c < courts; c++) {
+      var m1 = ms[c*2], m2 = ms[c*2+1], f1 = fs[c*2], f2 = fs[c*2+1];
+      var ps = pairCount[m1][f1] + pairCount[m2][f2];
+      var os = oppCount[m1][m2] + oppCount[m1][f2] + oppCount[f1][m2] + oppCount[f1][f2];
+      total += ps * 3 + os;
+      matchups.push({ team1: [m1, f1], team2: [m2, f2] });
+    }
+    if (total < bestScore) { bestScore = total; best = matchups; }
+  }
+  return best;
+}
+
 function shuffleArray(arr) {
   for (var i = arr.length - 1; i > 0; i--) {
     var j = Math.floor(Math.random() * (i + 1));
@@ -381,7 +537,7 @@ function renderMatchList() {
     var card = document.createElement('div');
     card.className = 'match-card' + (savedScore ? ' completed' : '');
     card.id = 'match-' + idx;
-    card.innerHTML = '<div class="match-header"><span class="match-number">' + (savedScore ? '✅ ' : '') + '第' + (idx + 1) + '試合</span><span class="court-label">コート ' + match.court + '</span></div><div class="match-teams"><span class="team">' + players[match.team1[0]] + ' ・ ' + players[match.team1[1]] + '</span><span class="vs">VS</span><span class="team">' + players[match.team2[0]] + ' ・ ' + players[match.team2[1]] + '</span></div><div class="score-area"><input type="number" id="score1-' + idx + '" placeholder="得点" min="0" value="' + (savedScore ? savedScore.score1 : '') + '" oninput="onScoreInput(' + idx + ')"><span class="score-dash">−</span><input type="number" id="score2-' + idx + '" placeholder="得点" min="0" value="' + (savedScore ? savedScore.score2 : '') + '" oninput="onScoreInput(' + idx + ')"></div>';
+    card.innerHTML = '<div class="match-header"><span class="match-number">' + (savedScore ? '✅ ' : '') + '第' + (idx + 1) + '試合</span><span class="court-label">コート ' + match.court + '</span></div><div class="match-teams"><span class="team">' + players[match.team1[0]] + genderBadge(match.team1[0]) + ' ・ ' + players[match.team1[1]] + genderBadge(match.team1[1]) + '</span><span class="vs">VS</span><span class="team">' + players[match.team2[0]] + genderBadge(match.team2[0]) + ' ・ ' + players[match.team2[1]] + genderBadge(match.team2[1]) + '</span></div><div class="score-area"><input type="number" id="score1-' + idx + '" placeholder="得点" min="0" value="' + (savedScore ? savedScore.score1 : '') + '" oninput="onScoreInput(' + idx + ')"><span class="score-dash">−</span><input type="number" id="score2-' + idx + '" placeholder="得点" min="0" value="' + (savedScore ? savedScore.score2 : '') + '" oninput="onScoreInput(' + idx + ')"></div>';
     container.appendChild(card);
   }
 
@@ -527,7 +683,7 @@ function renderResults(stats) {
     else if (s.rank === 2) { rankClass = 'rank-2'; badgeClass = 'silver'; }
     else if (s.rank === 3) { rankClass = 'rank-3'; badgeClass = 'bronze'; }
     var diffDisplay = s.diff > 0 ? '+' + s.diff : '' + s.diff;
-    html += '<tr class="' + rankClass + '"><td><span class="rank-badge ' + badgeClass + '">' + s.rank + '</span></td><td>' + s.name + '</td><td>' + s.matchCount + '</td><td>' + s.wins + '</td><td>' + s.losses + '</td><td>' + s.draws + '</td><td>' + s.pointsFor + '</td><td>' + s.pointsAgainst + '</td><td>' + diffDisplay + '</td></tr>';
+    html += '<tr class="' + rankClass + '"><td><span class="rank-badge ' + badgeClass + '">' + s.rank + '</span></td><td>' + s.name + genderBadge(s.index) + '</td><td>' + s.matchCount + '</td><td>' + s.wins + '</td><td>' + s.losses + '</td><td>' + s.draws + '</td><td>' + s.pointsFor + '</td><td>' + s.pointsAgainst + '</td><td>' + diffDisplay + '</td></tr>';
   }
 
   html += '</tbody></table>';
@@ -552,6 +708,8 @@ function resetApp() {
 function getShareState() {
   return {
     players: players.slice(),
+    genders: genders.slice(),
+    mixedDoubles: mixedDoubles,
     activePlayers: activePlayers.slice(),
     courtCount: courtCount,
     matches: matches.map(function (m) {
@@ -569,6 +727,9 @@ function getShareState() {
 function applyShareState(remote) {
   if (!remote) return;
   players = (remote.players || []).slice();
+  genders = (remote.genders || []).slice();
+  while (genders.length < players.length) genders.push('');
+  mixedDoubles = !!remote.mixedDoubles;
   playerCount = players.length;
   activePlayers = (remote.activePlayers || players.map(function (_, i) { return i; })).slice();
   if (typeof remote.courtCount === 'number') courtCount = remote.courtCount;
@@ -622,8 +783,11 @@ async function startSharedSession() {
 }
 
 // ロビーから受け取った名前で組み合わせを生成
-function generateFromLobbyPlayers(namedPlayers, courts) {
+function generateFromLobbyPlayers(namedPlayers, courts, namedGenders, mixed) {
   players = namedPlayers.slice();
+  genders = (namedGenders || []).slice();
+  while (genders.length < players.length) genders.push('');
+  mixedDoubles = !!mixed;
   playerCount = players.length;
   courtCount = courts || courtCount;
   activePlayers = players.map(function (_, i) { return i; });
@@ -648,8 +812,8 @@ function generateFromLobbyPlayers(namedPlayers, courts) {
     getState: getShareState,
     applyState: applyShareState,
     container: shareContainer,
-    onGenerate: function (namedPlayers, courts) {
-      generateFromLobbyPlayers(namedPlayers, courts);
+    onGenerate: function (namedPlayers, courts, namedGenders, mixed) {
+      generateFromLobbyPlayers(namedPlayers, courts, namedGenders, mixed);
     }
   });
 })();

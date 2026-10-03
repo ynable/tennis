@@ -365,6 +365,63 @@ body.view-only .view-only-badge {
   font-size: 1rem;
 }
 
+/* ロビー 性別選択 */
+.lobby-gender-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.lobby-gender-label {
+  font-size: 0.85rem;
+  color: #555;
+}
+.gender-pick {
+  padding: 8px 14px;
+  border: 2px solid #ddd;
+  background: #fff;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.gender-pick.male.active {
+  background: #4a90e2;
+  color: #fff;
+  border-color: #4a90e2;
+}
+.gender-pick.female.active {
+  background: #f5567c;
+  color: #fff;
+  border-color: #f5567c;
+}
+
+/* ロビー ミックスダブルス */
+.lobby-mixed-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+.lobby-mixed-label input {
+  width: 18px;
+  height: 18px;
+}
+
+/* ロビー スロット 性別バッジ */
+.lobby-slot-name .gender-badge {
+  display: inline-block;
+  margin-left: 3px;
+  font-size: 0.85em;
+  font-weight: bold;
+}
+.lobby-slot-name .gender-badge.male { color: #4a90e2; }
+.lobby-slot-name .gender-badge.female { color: #f5567c; }
+
 /* オーナー手動追加 */
 .lobby-owner-add {
   background: linear-gradient(135deg, #fff9e6, #fff3d6);

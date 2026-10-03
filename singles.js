@@ -6,10 +6,18 @@
 let courtCount = 2;
 let playerCount = 6;
 let players = [];
+let genders = [];
 let activePlayers = [];
 let matches = [];
 let scores = {};
 const TOTAL_MATCHES = 30;
+
+function genderBadge(idx) {
+  var g = genders[idx];
+  if (g === 'male') return '<span class="gender-badge male" title="男性">♂</span>';
+  if (g === 'female') return '<span class="gender-badge female" title="女性">♀</span>';
+  return '';
+}
 
 let memberChangeRound = -1;
 let pendingActive = [];
@@ -68,10 +76,13 @@ function goToStep2FromStep3() { showStep('step2'); }
 
 function goToStep3() {
   players = [];
+  genders = [];
   for (var i = 0; i < playerCount; i++) {
     var input = document.getElementById('player-' + i);
     var name = input.value.trim() || ('プレイヤー' + (i + 1));
     players.push(name);
+    var gEl = document.getElementById('gender-' + i);
+    genders.push(gEl ? gEl.value : '');
   }
   activePlayers = Array.from({ length: playerCount }, function(_, i) { return i; });
   showStep('step3');
@@ -83,8 +94,31 @@ function renderPlayerInputs() {
   for (var i = 0; i < playerCount; i++) {
     var group = document.createElement('div');
     group.className = 'player-input-group';
-    group.innerHTML = '<span class="player-number">' + (i + 1) + '</span><input type="text" id="player-' + i + '" placeholder="プレイヤー' + (i + 1) + 'の名前">';
+    var g = genders[i] || '';
+    group.innerHTML =
+      '<span class="player-number">' + (i + 1) + '</span>' +
+      '<input type="text" id="player-' + i + '" placeholder="プレイヤー' + (i + 1) + 'の名前">' +
+      '<input type="hidden" id="gender-' + i + '" value="' + g + '">' +
+      '<div class="gender-toggle">' +
+        '<button type="button" class="gender-btn male' + (g === 'male' ? ' active' : '') + '" data-g="male" onclick="setPlayerGender(' + i + ', \'male\')">♂</button>' +
+        '<button type="button" class="gender-btn female' + (g === 'female' ? ' active' : '') + '" data-g="female" onclick="setPlayerGender(' + i + ', \'female\')">♀</button>' +
+      '</div>';
     container.appendChild(group);
+  }
+}
+
+function setPlayerGender(idx, g) {
+  var hidden = document.getElementById('gender-' + idx);
+  if (!hidden) return;
+  var newVal = hidden.value === g ? '' : g;
+  hidden.value = newVal;
+  genders[idx] = newVal;
+  var group = hidden.closest('.player-input-group');
+  if (group) {
+    var btns = group.querySelectorAll('.gender-btn');
+    for (var b = 0; b < btns.length; b++) {
+      btns[b].classList.toggle('active', btns[b].dataset.g === newVal);
+    }
   }
 }
 
@@ -94,12 +128,12 @@ function applyBulkPlayerNames() {
   if (!bulkInput || !errorEl) return;
 
   var names = bulkInput.value
-    .split(/\s+/)
+    .split(/[\s,、。.]+/)
     .map(function(name) { return name.trim(); })
     .filter(function(name) { return name.length > 0; });
 
   if (names.length === 0) {
-    errorEl.textContent = '名前を空白区切りで入力してください。';
+    errorEl.textContent = '名前を , 、 。 . のいずれかで区切って入力してください。';
     errorEl.classList.add('visible');
     return;
   }
@@ -361,7 +395,7 @@ function renderMatchList() {
     var card = document.createElement('div');
     card.className = 'match-card' + (savedScore ? ' completed' : '');
     card.id = 'match-' + idx;
-    card.innerHTML = '<div class="match-header"><span class="match-number">' + (savedScore ? '✅ ' : '') + '第' + (idx + 1) + '試合</span><span class="court-label">コート ' + match.court + '</span></div><div class="match-teams"><span class="team">' + players[match.player1] + '</span><span class="vs">VS</span><span class="team">' + players[match.player2] + '</span></div><div class="score-area"><input type="number" id="score1-' + idx + '" placeholder="得点" min="0" value="' + (savedScore ? savedScore.score1 : '') + '" oninput="onScoreInput(' + idx + ')"><span class="score-dash">−</span><input type="number" id="score2-' + idx + '" placeholder="得点" min="0" value="' + (savedScore ? savedScore.score2 : '') + '" oninput="onScoreInput(' + idx + ')"></div>';
+    card.innerHTML = '<div class="match-header"><span class="match-number">' + (savedScore ? '✅ ' : '') + '第' + (idx + 1) + '試合</span><span class="court-label">コート ' + match.court + '</span></div><div class="match-teams"><span class="team">' + players[match.player1] + genderBadge(match.player1) + '</span><span class="vs">VS</span><span class="team">' + players[match.player2] + genderBadge(match.player2) + '</span></div><div class="score-area"><input type="number" id="score1-' + idx + '" placeholder="得点" min="0" value="' + (savedScore ? savedScore.score1 : '') + '" oninput="onScoreInput(' + idx + ')"><span class="score-dash">−</span><input type="number" id="score2-' + idx + '" placeholder="得点" min="0" value="' + (savedScore ? savedScore.score2 : '') + '" oninput="onScoreInput(' + idx + ')"></div>';
     container.appendChild(card);
   }
 
@@ -439,6 +473,7 @@ function applyMemberChange() {
 function getShareState() {
   return {
     players: players.slice(),
+    genders: genders.slice(),
     activePlayers: activePlayers.slice(),
     courtCount: courtCount,
     matches: matches.map(function (m) {
@@ -451,6 +486,8 @@ function getShareState() {
 function applyShareState(remote) {
   if (!remote) return;
   players = (remote.players || []).slice();
+  genders = (remote.genders || []).slice();
+  while (genders.length < players.length) genders.push('');
   playerCount = players.length;
   activePlayers = (remote.activePlayers || players.map(function (_, i) { return i; })).slice();
   if (typeof remote.courtCount === 'number') courtCount = remote.courtCount;
@@ -499,8 +536,10 @@ async function startSharedSession() {
 }
 
 // ロビーから受け取った名前で組み合わせを生成
-function generateFromLobbyPlayers(namedPlayers, courts) {
+function generateFromLobbyPlayers(namedPlayers, courts, namedGenders) {
   players = namedPlayers.slice();
+  genders = (namedGenders || []).slice();
+  while (genders.length < players.length) genders.push('');
   playerCount = players.length;
   courtCount = courts || courtCount;
   activePlayers = players.map(function (_, i) { return i; });
@@ -525,8 +564,8 @@ function generateFromLobbyPlayers(namedPlayers, courts) {
     getState: getShareState,
     applyState: applyShareState,
     container: shareContainer,
-    onGenerate: function (namedPlayers, courts) {
-      generateFromLobbyPlayers(namedPlayers, courts);
+    onGenerate: function (namedPlayers, courts, namedGenders) {
+      generateFromLobbyPlayers(namedPlayers, courts, namedGenders);
     }
   });
 })();
@@ -611,7 +650,7 @@ function renderResults(stats) {
     else if (s.rank === 2) { rankClass = 'rank-2'; badgeClass = 'silver'; }
     else if (s.rank === 3) { rankClass = 'rank-3'; badgeClass = 'bronze'; }
     var diffDisplay = s.diff > 0 ? '+' + s.diff : '' + s.diff;
-    html += '<tr class="' + rankClass + '"><td><span class="rank-badge ' + badgeClass + '">' + s.rank + '</span></td><td>' + s.name + '</td><td>' + s.matchCount + '</td><td>' + s.wins + '</td><td>' + s.losses + '</td><td>' + s.draws + '</td><td>' + s.pointsFor + '</td><td>' + s.pointsAgainst + '</td><td>' + diffDisplay + '</td></tr>';
+    html += '<tr class="' + rankClass + '"><td><span class="rank-badge ' + badgeClass + '">' + s.rank + '</span></td><td>' + s.name + genderBadge(s.index) + '</td><td>' + s.matchCount + '</td><td>' + s.wins + '</td><td>' + s.losses + '</td><td>' + s.draws + '</td><td>' + s.pointsFor + '</td><td>' + s.pointsAgainst + '</td><td>' + diffDisplay + '</td></tr>';
   }
 
   html += '</tbody></table>';
@@ -625,7 +664,7 @@ function backToMatches() {
 
 function resetApp() {
   if (!confirm('すべてのデータをリセットしますか？')) return;
-  players = []; activePlayers = []; matches = []; scores = {};
+  players = []; genders = []; activePlayers = []; matches = []; scores = {};
   document.getElementById('aggregateArea').classList.remove('visible');
   showStep('step1');
 }

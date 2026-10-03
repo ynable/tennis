@@ -45,6 +45,8 @@ async function createSession(mode, state) {
     await setDoc(ref, {
       mode,
       players: state.players || [],
+      genders: state.genders || [],
+      mixedDoubles: state.mixedDoubles || false,
       matches: state.matches || [],
       scores: state.scores || {},
       hostName: state.hostName || "",
@@ -100,6 +102,7 @@ function buildShareUrl(code) {
 async function createLobbySession(mode, params) {
   const expected = Math.max(2, Math.min(80, params.expectedCount | 0));
   const players = new Array(expected).fill(null);
+  const genders = new Array(expected).fill(null);
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generateCode();
     const ref = doc(db, "sessions", code);
@@ -109,6 +112,7 @@ async function createLobbySession(mode, params) {
     await setDoc(ref, {
       mode,
       players,
+      genders,
       matches: [],
       scores: {},
       expectedCount: expected,
@@ -128,7 +132,7 @@ async function createLobbySession(mode, params) {
  * トランザクションで競合を回避。
  * @returns {Promise<number>} 割り当てられたスロットindex (0-based)
  */
-async function claimSlot(code, name) {
+async function claimSlot(code, name, gender) {
   const ref = doc(db, "sessions", code.toUpperCase());
   return await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
@@ -138,6 +142,8 @@ async function claimSlot(code, name) {
       throw new Error("このセッションは既に開始されています");
     }
     const players = (data.players || []).slice();
+    const genders = (data.genders || []).slice();
+    while (genders.length < players.length) genders.push(null);
     const emptyIndices = [];
     for (let i = 0; i < players.length; i++) {
       if (players[i] == null || players[i] === "") emptyIndices.push(i);
@@ -145,7 +151,8 @@ async function claimSlot(code, name) {
     if (emptyIndices.length === 0) throw new Error("定員です");
     const idx = emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
     players[idx] = name;
-    tx.update(ref, { players, updatedAt: serverTimestamp() });
+    genders[idx] = gender || "";
+    tx.update(ref, { players, genders, updatedAt: serverTimestamp() });
     return idx;
   });
 }

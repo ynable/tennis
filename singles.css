@@ -195,6 +195,88 @@ h2 {
   outline: none;
 }
 
+/* 一括入力 */
+.bulk-player-input-area {
+  background: #f8faf9;
+  border: 1px solid #e2e8e5;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+.bulk-player-input-area > label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #444;
+  margin-bottom: 8px;
+}
+.bulk-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 2px solid #ddd;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-family: inherit;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 84px;
+  transition: border-color 0.3s;
+}
+.bulk-textarea:focus {
+  border-color: #43e97b;
+  outline: none;
+}
+.bulk-apply-btn {
+  margin-top: 10px;
+  width: 100%;
+}
+.bulk-hint {
+  font-size: 0.78rem;
+  color: #888;
+  margin: 8px 0 0;
+}
+
+/* 性別トグル */
+.player-input-group .gender-toggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+.gender-btn {
+  width: 34px;
+  height: 38px;
+  border: none;
+  background: #fff;
+  color: #aaa;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.gender-btn + .gender-btn {
+  border-left: 1px solid #eee;
+}
+.gender-btn.male.active {
+  background: #4a90e2;
+  color: #fff;
+}
+.gender-btn.female.active {
+  background: #f5567c;
+  color: #fff;
+}
+
+/* 性別バッジ */
+.gender-badge {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 0.8em;
+  font-weight: bold;
+}
+.gender-badge.male { color: #4a90e2; }
+.gender-badge.female { color: #f5567c; }
+
 /* 初戦選択 */
 .description {
   color: #777;

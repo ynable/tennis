@@ -20,6 +20,9 @@
     expectedCount: 0,
     courtCount: 0,
     remotePlayers: [],
+    remoteGenders: [],
+    joinGender: "",              // ロビー参加時に選択した性別
+    ownerAddGender: "",          // オーナー手動追加時の性別
     mySlot: null,               // {index, name} - role は廃止 (allowGuestEdit で一元管理)
     lobbyVisible: false,
     claimInProgress: false,     // 連続クリック/エンター防止ロック
@@ -184,6 +187,7 @@
     state.expectedCount = 0;
     state.courtCount = 0;
     state.remotePlayers = [];
+    state.remoteGenders = [];
     state.mySlot = null;
     hideLobby();
     document.body.classList.remove("view-only");
@@ -213,6 +217,7 @@
       state.expectedCount = remote.expectedCount || 0;
       state.courtCount = remote.courtCount || state.courtCount || 0;
       state.remotePlayers = (remote.players || []).slice();
+      state.remoteGenders = (remote.genders || []).slice();
 
       var newAllow = !!remote.allowGuestEdit;
       var allowChanged = newAllow !== state.allowGuestEdit;
@@ -288,6 +293,11 @@
       '<div id="lobbySlots" class="lobby-slots"></div>' +
       '<div id="lobbyJoinForm" class="lobby-join-form" style="display:none">' +
         '<h3>あなたも参加する</h3>' +
+        '<div class="lobby-gender-row" id="lobbyJoinGender">' +
+          '<span class="lobby-gender-label">性別</span>' +
+          '<button type="button" class="gender-pick male" data-g="male">♂ 男性</button>' +
+          '<button type="button" class="gender-pick female" data-g="female">♀ 女性</button>' +
+        '</div>' +
         '<div class="lobby-join-row">' +
           '<input type="text" id="lobbyJoinName" placeholder="あなたの名前" maxlength="20">' +
           '<button class="btn primary" id="lobbyJoinBtn">🎰 抽選する</button>' +
@@ -300,12 +310,20 @@
       '</div>' +
       '<div id="lobbyOwnerAdd" class="lobby-owner-add" style="display:none">' +
         '<h3>👑 携帯なし勢を手動で追加</h3>' +
+        '<div class="lobby-gender-row" id="ownerAddGender">' +
+          '<span class="lobby-gender-label">性別</span>' +
+          '<button type="button" class="gender-pick male" data-g="male">♂ 男性</button>' +
+          '<button type="button" class="gender-pick female" data-g="female">♀ 女性</button>' +
+        '</div>' +
         '<div class="lobby-join-row">' +
           '<input type="text" id="ownerAddName" placeholder="プレイヤーの名前" maxlength="20">' +
           '<button class="btn secondary" id="ownerAddBtn">🎰 追加</button>' +
         '</div>' +
       '</div>' +
       '<div id="lobbyOwnerActions" class="lobby-owner-actions" style="display:none">' +
+        '<label class="lobby-mixed-label" id="lobbyMixedLabel" style="display:none">' +
+          '<input type="checkbox" id="lobbyMixedCheck"> ミックスダブルス（各ペアを男女１人ずつ）' +
+        '</label>' +
         '<button class="btn primary" id="lobbyGenerateBtn">組み合わせを生成 →</button>' +
         '<p class="lobby-generate-hint" id="lobbyGenerateHint"></p>' +
       '</div>';
@@ -318,6 +336,20 @@
     document.getElementById("lobbyJoinName").addEventListener("keydown", function (e) {
       if (e.key === "Enter") handleSelfJoin();
     });
+    var joinGenderEl = document.getElementById("lobbyJoinGender");
+    if (joinGenderEl) joinGenderEl.addEventListener("click", function (e) {
+      var btn = e.target.closest ? e.target.closest(".gender-pick") : null;
+      if (!btn) return;
+      state.joinGender = btn.dataset.g;
+      setGenderPickActive(joinGenderEl, state.joinGender);
+    });
+    var ownerGenderEl = document.getElementById("ownerAddGender");
+    if (ownerGenderEl) ownerGenderEl.addEventListener("click", function (e) {
+      var btn = e.target.closest ? e.target.closest(".gender-pick") : null;
+      if (!btn) return;
+      state.ownerAddGender = btn.dataset.g;
+      setGenderPickActive(ownerGenderEl, state.ownerAddGender);
+    });
     document.getElementById("lobbyLeaveBtn").addEventListener("click", handleLeaveSlot);
     document.getElementById("ownerAddBtn").addEventListener("click", handleOwnerAddManual);
     document.getElementById("ownerAddName").addEventListener("keydown", function (e) {
@@ -325,6 +357,14 @@
     });
     document.getElementById("lobbyGenerateBtn").addEventListener("click", handleGenerate);
     return section;
+  }
+
+  function setGenderPickActive(container, g) {
+    if (!container) return;
+    var btns = container.querySelectorAll(".gender-pick");
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle("active", btns[i].dataset.g === g);
+    }
   }
 
   function updateLobbyContent() {
@@ -345,9 +385,12 @@
       var isMe = state.mySlot && state.mySlot.index === i;
       var div = document.createElement("div");
       div.className = "lobby-slot" + (isEmpty ? " empty" : " filled") + (isMe ? " me" : "");
+      var gg = state.remoteGenders[i];
+      var gBadge = gg === "male" ? '<span class="gender-badge male">♂</span>'
+        : (gg === "female" ? '<span class="gender-badge female">♀</span>' : "");
       var html =
         '<span class="lobby-slot-num">' + (i + 1) + '</span>' +
-        '<span class="lobby-slot-name">' + (isEmpty ? "—" : escapeHtml(p)) + '</span>' +
+        '<span class="lobby-slot-name">' + (isEmpty ? "—" : (escapeHtml(p) + gBadge)) + '</span>' +
         (isMe ? '<span class="lobby-slot-me-badge">YOU</span>' : "");
       if (state.isOwner && !isEmpty) {
         html += '<button class="lobby-slot-delete" title="削除" data-idx="' + i + '">×</button>';
@@ -384,6 +427,8 @@
     if (state.isOwner) {
       ownerAdd.style.display = filled < total ? "" : "none";
       ownerActions.style.display = "";
+      var mixedLabel = document.getElementById("lobbyMixedLabel");
+      if (mixedLabel) mixedLabel.style.display = state.mode === "doubles" ? "" : "none";
       var minPlayers = state.mode === "singles" ? 2 : (state.mode === "doubles" ? 4 : 2);
       var canGenerate = filled >= minPlayers;
       var generateBtn = document.getElementById("lobbyGenerateBtn");
@@ -407,7 +452,7 @@
     var startTime = Date.now();
     var idx;
     try {
-      idx = await window.TennisShare.claimSlot(state.sessionCode, name);
+      idx = await window.TennisShare.claimSlot(state.sessionCode, name, arguments[1] || "");
     } catch (e) {
       closeGachaModal();
       throw e;
@@ -428,6 +473,7 @@
     var nameInput = document.getElementById("lobbyJoinName");
     var name = nameInput.value.trim();
     if (!name) { showToast("名前を入力してください"); nameInput.focus(); return; }
+    if (!state.joinGender) { showToast("性別を選択してください"); return; }
     state.claimInProgress = true;
     var btn = document.getElementById("lobbyJoinBtn");
     btn.disabled = true;
@@ -435,11 +481,13 @@
     var origText = btn.textContent;
     btn.textContent = "抽選中...";
     try {
-      var idx = await claimWithGachaAnimation(name);
+      var idx = await claimWithGachaAnimation(name, state.joinGender);
       state.mySlot = { index: idx, name: name };
       saveMySlot(state.sessionCode, state.mySlot);
       applyEffectiveRole();
       nameInput.value = "";
+      state.joinGender = "";
+      setGenderPickActive(document.getElementById("lobbyJoinGender"), "");
       updateLobbyContent();
     } catch (e) {
       showToast("参加に失敗: " + (e.message || e));
@@ -456,6 +504,7 @@
     var nameInput = document.getElementById("ownerAddName");
     var name = nameInput.value.trim();
     if (!name) { showToast("名前を入力してください"); nameInput.focus(); return; }
+    if (!state.ownerAddGender) { showToast("性別を選択してください"); return; }
     state.claimInProgress = true;
     var btn = document.getElementById("ownerAddBtn");
     btn.disabled = true;
@@ -463,8 +512,10 @@
     var origText = btn.textContent;
     btn.textContent = "抽選中...";
     try {
-      await claimWithGachaAnimation(name);
+      await claimWithGachaAnimation(name, state.ownerAddGender);
       nameInput.value = "";
+      state.ownerAddGender = "";
+      setGenderPickActive(document.getElementById("ownerAddGender"), "");
       updateLobbyContent();
       setTimeout(function () { if (!nameInput.disabled) nameInput.focus(); }, 100);
     } catch (e) {
@@ -485,8 +536,10 @@
     state.deleteInProgress = true;
     try {
       var players = state.remotePlayers.slice();
+      var genders = state.remoteGenders.slice();
       players[idx] = null;
-      await window.TennisShare.updateSession(state.sessionCode, { players: players });
+      genders[idx] = null;
+      await window.TennisShare.updateSession(state.sessionCode, { players: players, genders: genders });
       // 自分のスロットを削除した場合 localStorage もクリーン
       if (state.mySlot && state.mySlot.index === idx) {
         clearMySlot(state.sessionCode);
@@ -507,9 +560,11 @@
     var idx = state.mySlot.index;
     try {
       var players = state.remotePlayers.slice();
+      var genders = state.remoteGenders.slice();
       if (players[idx] === state.mySlot.name) {
         players[idx] = null;
-        await window.TennisShare.updateSession(state.sessionCode, { players: players });
+        genders[idx] = null;
+        await window.TennisShare.updateSession(state.sessionCode, { players: players, genders: genders });
       }
     } catch (e) {}
     clearMySlot(state.sessionCode);
@@ -524,13 +579,33 @@
       alert("生成コールバックが設定されていません");
       return;
     }
-    var namedPlayers = state.remotePlayers.filter(function (p) { return p != null && p !== ""; });
+    var namedPlayers = [];
+    var namedGenders = [];
+    for (var i = 0; i < state.remotePlayers.length; i++) {
+      var p = state.remotePlayers[i];
+      if (p != null && p !== "") {
+        namedPlayers.push(p);
+        namedGenders.push(state.remoteGenders[i] || "");
+      }
+    }
     if (namedPlayers.length < 2) { alert("最低 2 人必要です"); return; }
+    var mixedEl = document.getElementById("lobbyMixedCheck");
+    var mixed = !!(mixedEl && mixedEl.checked);
+    if (mixed) {
+      var mc = 0, fc = 0, un = 0;
+      for (var j = 0; j < namedGenders.length; j++) {
+        if (namedGenders[j] === "male") mc++;
+        else if (namedGenders[j] === "female") fc++;
+        else un++;
+      }
+      if (un > 0) { alert("ミックスダブルスでは全員の性別が必要です。(未設定: " + un + "人)"); return; }
+      if (mc < 2 || fc < 2) { alert("ミックスダブルスには男性2人以上・女性2人以上が必要です。(現在 男" + mc + " / 女" + fc + ")"); return; }
+    }
     var btn = document.getElementById("lobbyGenerateBtn");
     btn.disabled = true;
     btn.textContent = "生成中...";
     try {
-      await state.onGenerate(namedPlayers, state.courtCount);
+      await state.onGenerate(namedPlayers, state.courtCount, namedGenders, mixed);
     } catch (e) {
       alert("生成に失敗: " + (e.message || e));
       btn.disabled = false;
@@ -646,7 +721,8 @@
     clearTimeout(state.pushTimer);
     state.pushTimer = setTimeout(async function () {
       var st = state.getState();
-      var pushData = { players: st.players, matches: st.matches, scores: st.scores };
+      var pushData = { players: st.players, genders: st.genders || [], matches: st.matches, scores: st.scores };
+      if (typeof st.mixedDoubles !== "undefined") pushData.mixedDoubles = st.mixedDoubles;
       state.lastSyncedKey = computeKey(pushData);
       try {
         await window.TennisShare.updateSession(state.sessionCode, pushData);

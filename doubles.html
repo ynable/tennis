@@ -54,11 +54,10 @@
     <section id="step2" class="step">
       <h2>Step 2: プレイヤー名を入力</h2>
       <div class="bulk-player-input-area">
-        <label for="bulkPlayerInput">一括入力（空白区切り）</label>
-        <div class="bulk-input-row">
-          <input type="text" id="bulkPlayerInput" placeholder="例: 田中 太郎 鈴木 佐藤">
-          <button type="button" class="btn secondary" onclick="applyBulkPlayerNames()">一括反映</button>
-        </div>
+        <label for="bulkPlayerInput">まとめて入力（, 、 。 . で区切り）</label>
+        <textarea id="bulkPlayerInput" class="bulk-textarea" rows="3" placeholder="例: 田中、鈴木、佐藤、斎藤"></textarea>
+        <button type="button" class="btn secondary bulk-apply-btn" onclick="applyBulkPlayerNames()">一括反映</button>
+        <p class="bulk-hint">※ 空白・改行でも区切れます</p>
         <p id="playerInputError" class="error-message"></p>
       </div>
       <div id="playerInputs" class="player-inputs"></div>
@@ -80,6 +79,13 @@
           いいえ（ランダムで組む）
         </label>
       </div>
+      <div class="mixed-doubles-option">
+        <label class="mixed-check-label">
+          <input type="checkbox" id="mixedDoublesCheck">
+          ミックスダブルス（各ペアを男女１人ずつにする）
+        </label>
+      </div>
+      <p id="step3Error" class="error-message"></p>
       <button class="btn secondary" onclick="goToStep2FromStep3()">戻る</button>
       <button class="btn primary" onclick="generateMatches()">組み合わせを生成！</button>
     </section>
