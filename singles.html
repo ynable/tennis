@@ -53,6 +53,14 @@
     <!-- Step 2: プレイヤー名入力 -->
     <section id="step2" class="step">
       <h2>Step 2: プレイヤー名を入力</h2>
+      <div class="bulk-player-input-area">
+        <label for="bulkPlayerInput">一括入力（空白区切り）</label>
+        <div class="bulk-input-row">
+          <input type="text" id="bulkPlayerInput" placeholder="例: 田中 太郎 鈴木 佐藤">
+          <button type="button" class="btn secondary" onclick="applyBulkPlayerNames()">一括反映</button>
+        </div>
+        <p id="playerInputError" class="error-message"></p>
+      </div>
       <div id="playerInputs" class="player-inputs"></div>
       <button class="btn secondary" onclick="goToStep1()">戻る</button>
       <button class="btn primary" onclick="goToStep3()">次へ</button>

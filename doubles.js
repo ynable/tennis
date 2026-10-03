@@ -85,6 +85,39 @@ function renderPlayerInputs() {
   }
 }
 
+function applyBulkPlayerNames() {
+  const bulkInput = document.getElementById('bulkPlayerInput');
+  const errorEl = document.getElementById('playerInputError');
+  if (!bulkInput || !errorEl) return;
+
+  const names = bulkInput.value
+    .split(/\s+/)
+    .map(name => name.trim())
+    .filter(name => name.length > 0);
+
+  if (names.length === 0) {
+    errorEl.textContent = '名前を空白区切りで入力してください。';
+    errorEl.classList.add('visible');
+    return;
+  }
+
+  if (names.length > playerCount) {
+    errorEl.textContent = '入力人数が多すぎます。' + playerCount + '人分まで入力してください。';
+    errorEl.classList.add('visible');
+    return;
+  }
+
+  for (let i = 0; i < playerCount; i++) {
+    const target = document.getElementById('player-' + i);
+    if (target) {
+      target.value = names[i] || '';
+    }
+  }
+
+  errorEl.classList.remove('visible');
+  errorEl.textContent = '';
+}
+
 function generateMatches() {
   const firstMatchType = document.querySelector('input[name="firstMatch"]:checked').value;
   matches = [];
